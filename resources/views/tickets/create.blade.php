@@ -558,8 +558,30 @@ btnAnalyze.addEventListener('click', async () => {
     fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
 
     try {
-        const res  = await fetch('{{ route("tickets.analyze") }}', { method: 'POST', body: fd });
-        const json = await res.json();
+        const res = await fetch('{{ route("tickets.analyze") }}', { 
+            method: 'POST', 
+            body: fd,
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        let json;
+        if (contentType.includes('application/json')) {
+            json = await res.json();
+        } else {
+            const rawText = await res.text();
+            if (res.status === 413) {
+                throw new Error('Ukuran foto terlalu besar untuk server (413 Payload Too Large). Pastikan ukuran upload Nginx / PHP sudah dinaikkan.');
+            } else if (res.status === 504) {
+                throw new Error('Server mengalami timeout (504 Gateway Timeout). Silakan tingkatkan fastcgi_read_timeout di Nginx/PHP.');
+            } else if (res.status === 419) {
+                throw new Error('Sesi halaman telah kedaluwarsa (419 CSRF Token Expired). Silakan refresh halaman dan coba lagi.');
+            }
+            throw new Error(`Server merespons status ${res.status}: ${rawText.slice(0, 120)}...`);
+        }
 
         if (!json.success) throw new Error(json.message || 'Gagal menganalisis gambar.');
 
@@ -588,7 +610,11 @@ btnAnalyze.addEventListener('click', async () => {
         showStep(3);
 
     } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Analisis Gagal', text: err.message });
+        let errorMsg = err.message || 'Gagal menganalisis gambar.';
+        if (errorMsg === 'Failed to fetch') {
+            errorMsg = 'Gagal terhubung ke server (Failed to fetch).\n\nKemungkinan penyebab:\n1. Ukuran file upload melebihi limit Nginx/PHP (client_max_body_size).\n2. Request time out saat memproses AI.\n3. Masalah Mixed Content HTTPS/HTTP.';
+        }
+        Swal.fire({ icon: 'error', title: 'Analisis Gagal', text: errorMsg });
     } finally {
         btnAnalyze.disabled = false;
         analyzeStatus.style.display = 'none';

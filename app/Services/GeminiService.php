@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     private string $apiKey;
-    private string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
+    private string $apiUrl;
 
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key', '');
+        $model = config('services.gemini.model', 'gemini-2.5-flash');
+        $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
     }
 
     /**
@@ -92,8 +94,11 @@ PROMPT;
         ]);
 
         if (!$response->successful()) {
-            Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('Gemini API gagal merespons: ' . $response->status());
+            $status = $response->status();
+            $body = $response->json();
+            $msg = $body['error']['message'] ?? $response->body();
+            Log::error('Gemini API error', ['status' => $status, 'message' => $msg]);
+            throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
         }
 
         $text = $response->json('candidates.0.content.parts.0.text', '');
@@ -171,8 +176,11 @@ PROMPT;
         ]);
 
         if (!$response->successful()) {
-            Log::error('Gemini API error on analyzeTicket', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('Gemini API gagal merespons: status ' . $response->status());
+            $status = $response->status();
+            $body = $response->json();
+            $msg = $body['error']['message'] ?? $response->body();
+            Log::error('Gemini API error on analyzeTicket', ['status' => $status, 'message' => $msg]);
+            throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
         }
 
         return $response->json('candidates.0.content.parts.0.text', 'Tidak ada konten analisis yang dihasilkan.');
