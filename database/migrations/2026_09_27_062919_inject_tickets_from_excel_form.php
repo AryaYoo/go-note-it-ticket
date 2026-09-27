@@ -24,9 +24,18 @@ return new class extends Migration
         // 2. Bersihkan seluruh data tiket yang ada saat ini
         DB::table('tickets')->delete();
 
-        // 3. Cari user default untuk foreign key user_id
+        // 3. Cari user default untuk foreign key user_id, buat jika belum ada di database fresh
         $defaultUser = User::first();
-        $userId = $defaultUser ? $defaultUser->id : 1;
+        if (!$defaultUser) {
+            $defaultUser = User::create([
+                'name'     => 'Staff IT',
+                'email'    => 'it',
+                'password' => \Illuminate\Support\Facades\Hash::make('it'),
+                'role'     => 'staff',
+                'divisi'   => 'IT Support',
+            ]);
+        }
+        $userId = $defaultUser->id;
 
         // 4. Baca file "Form Ticket IT as is.xlsx"
         $filePath = base_path('Form Ticket IT as is.xlsx');

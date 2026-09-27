@@ -32,7 +32,7 @@ return new class extends Migration
             $table->text('solusi_diberikan')->nullable();
             $table->text('root_cause')->nullable();
 
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
         });
     }
