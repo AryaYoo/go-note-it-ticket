@@ -1,59 +1,125 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ⚡ Go-Note — IT Ticketing System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem manajemen tiket operasional IT yang modern, cepat, dan terintegrasi kecerdasan buatan (**Google Gemini AI**) untuk pencatatan dan penanganan kendala teknis pada toko/cabang operasional.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🌟 Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 🛠️ Untuk Staff IT & Toko
+- **Pencatatan Tiket Otomatis dengan AI Vision**:
+  - Cukup unggah hingga 3 tangkapan layar (*screenshot*) percakapan WhatsApp laporan kendala toko.
+  - AI secara otomatis menganalisis dan mengisi kategori (*POS, Akun, Device, Jaringan/Lainnya*), prioritas kendala, deskripsi masalah, serta dampaknya pada operasional.
+- **Riwayat & Monitoring Tiket**:
+  - Tabel tiket interaktif dengan indikator status (*Open, In Progress, Resolved, Closed, Eskalasi*).
+  - Filter modal multi-kriteria: filter berdasarkan status, kategori, prioritas, rentang tanggal, dan pencarian teks.
+  - Ekspor seluruh atau sebagian data tiket ke format **Excel (.xlsx)**.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 📊 Untuk Manager / Admin IT
+- **Dashboard Ringkasan KPI**:
+  - Kartu statistik metrik utama: Total Tiket, Open, Sedang Diproses, dan Selesai.
+  - Grafik visual interaktif berbasis **Chart.js** (Distribusi Status & Kategori Tiket).
+  - Tabel sebaran tiket per Divisi/Toko.
+- **Analisis Kinerja Bulanan berbasis AI**:
+  - Evaluasi performa penanganan IT bulanan yang digenerate otomatis oleh Gemini AI.
+  - Menyediakan ringkasan eksekutif, identifikasi pola masalah umum, dan rekomendasi perbaikan berkala berformat Markdown.
+- **Manajemen Pengguna (User Management)**:
+  - Kelola akun staf dan manajer dengan hak akses terpisah.
+  - Fleksibilitas login menggunakan **Email** maupun **Username** (contoh: `it`, `admin`).
+  - Antarmuka pop-up modal modern dengan proteksi seleksi teks.
+- **Pengaturan Sistem (Settings)**:
+  - Toggle switch interaktif dengan fitur live preview untuk mengatur visibilitas info akun demo di halaman login.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 🎨 Desain & UI/UX
+- **Flat White Design System**: Antarmuka bersih, elegan, dan berstandar tinggi yang dibangun dengan Vanilla CSS murni dan tipografi Google Fonts (*Inter*).
+- **Desain Responsif Penuh**: Mendukung perangkat desktop dan tampilan mobile dengan drawer navigasi khusus.
+- **Interaksi Halus**: Menggunakan SweetAlert2 untuk feedback aksi pengguna yang ramah dan jelas.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 💻 Tech Stack
+- **Framework Back-End**: [Laravel](https://laravel.com/) (PHP 8.2+)
+- **Database**: MySQL / MariaDB
+- **Artificial Intelligence**: [Google Gemini API](https://ai.google.dev/) (`gemini-2.5-flash` Multimodal Vision & Text)
+- **Front-End & Assets**: Blade Templating, Vanilla CSS, Vite, Chart.js, SweetAlert2
+- **Spreadsheet Engine**: Maatwebsite / Laravel-Excel
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🚀 Panduan Instalasi Lokal
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 1. Prasyarat
+- PHP >= 8.2
+- Composer
+- Node.js & NPM
+- MySQL / XAMPP
 
-## Contributing
+### 2. Kloning Repositori
+```bash
+git clone https://github.com/AryaYoo/go-note-it-ticket.git
+cd go-note-it-ticket
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Install Dependensi
+```bash
+composer install
+npm install
+```
 
-## Code of Conduct
+### 4. Konfigurasi Lingkungan (.env)
+Salin file `.env.example` ke `.env`:
+```bash
+cp .env.example .env
+```
+Buka file `.env` dan sesuaikan koneksi database serta API Key Gemini:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=go-note
+DB_USERNAME=root
+DB_PASSWORD=
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Konfigurasi Google Gemini AI
+GEMINI_API_KEY=masukkan_api_key_gemini_anda_disini
+```
 
-## Security Vulnerabilities
+Generate application key:
+```bash
+php artisan key:generate
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 5. Migrasi & Seeder Database
+Jalankan migrasi database untuk membuat tabel dan data seeder:
+```bash
+php artisan migrate --seed
+```
 
-## License
+### 6. Jalankan Server
+Jalankan development server Laravel dan compiler asset Vite:
+```bash
+# Terminal 1: Laravel Serve
+php artisan serve
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Terminal 2: Vite Dev (Opsional jika ingin build asset)
+npm run dev
+```
+
+Buka browser dan akses: `http://127.0.0.1:8000`
+
+---
+
+## 🔑 Akun Demo Default
+
+| Role | Email / Username | Password | Keterangan Akses |
+|---|---|---|---|
+| **Admin / Manager** | `admin@hsitoperasional.com` | `admin` | Dashboard Manager, Users, Analisis AI, Settings |
+| **Manager IT** | `manager@gonote.id` | `password` | Dashboard Manager, Users, Analisis AI, Settings |
+| **Staff IT** | `it` *(atau `staff@gonote.id`)* | `it` *(atau `password`)* | Dashboard Tiket, Catat Tiket WhatsApp AI, Ekspor Excel |
+
+---
+
+## 📄 Lisensi
+Sistem ini bersifat Open Source di bawah lisensi [MIT License](LICENSE).
