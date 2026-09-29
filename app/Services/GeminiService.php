@@ -97,9 +97,16 @@ PROMPT;
             $status = $response->status();
             $body = $response->json();
             $msg = $body['error']['message'] ?? $response->body();
+            if ($status === 429) {
+                self::recordError('Rate Limit (429)');
+            }
             Log::error('Gemini API error', ['status' => $status, 'message' => $msg]);
             throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
         }
+
+        // Catat penggunaan token & request
+        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
+        self::recordUsage($tokens);
 
         $text = $response->json('candidates.0.content.parts.0.text', '');
         // Bersihkan markdown code block jika ada
@@ -151,6 +158,9 @@ PROMPT;
             return 'Rekomendasi tidak tersedia saat ini.';
         }
 
+        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
+        self::recordUsage($tokens);
+
         return $response->json('candidates.0.content.parts.0.text', 'Tidak ada rekomendasi.');
     }
 
@@ -179,10 +189,76 @@ PROMPT;
             $status = $response->status();
             $body = $response->json();
             $msg = $body['error']['message'] ?? $response->body();
+            if ($status === 429) {
+                self::recordError('Rate Limit (429)');
+            }
             Log::error('Gemini API error on analyzeTicket', ['status' => $status, 'message' => $msg]);
             throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
         }
 
+        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
+        self::recordUsage($tokens);
+
         return $response->json('candidates.0.content.parts.0.text', 'Tidak ada konten analisis yang dihasilkan.');
+    }
+
+    /**
+     * Catat penggunaan request dan token hari ini.
+     */
+    public static function recordUsage(int $tokens = 0): void
+    {
+        try {
+            $today = now()->toDateString();
+            $reqKey = "gemini_req_{$today}";
+            $tokKey = "gemini_tok_{$today}";
+
+            $currReq = (int) \App\Models\Setting::get($reqKey, 0);
+            \App\Models\Setting::set($reqKey, $currReq + 1);
+
+            $currTok = (int) \App\Models\Setting::get($tokKey, 0);
+            \App\Models\Setting::set($tokKey, $currTok + $tokens);
+
+            \App\Models\Setting::set('gemini_last_used', now()->toDateTimeString());
+            \App\Models\Setting::set('gemini_last_error', '');
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mencatat statistik penggunaan Gemini: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Catat status error terakhir dari Gemini API.
+     */
+    public static function recordError(string $error): void
+    {
+        try {
+            \App\Models\Setting::set('gemini_last_error', $error);
+            \App\Models\Setting::set('gemini_last_error_time', now()->toDateTimeString());
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Ambil ringkasan statistik penggunaan kuota Gemini untuk dashboard settings.
+     */
+    public static function getUsageStats(): array
+    {
+        $today = now()->toDateString();
+        $dailyLimit = 20; // Batas standar Free Tier per hari/window untuk model terbaru
+        $usedRequests = (int) \App\Models\Setting::get("gemini_req_{$today}", 0);
+        $usedTokens = (int) \App\Models\Setting::get("gemini_tok_{$today}", 0);
+        $remaining = max(0, $dailyLimit - $usedRequests);
+        $percent = min(100, (int) round(($usedRequests / $dailyLimit) * 100));
+
+        return [
+            'model'              => config('services.gemini.model', 'gemini-3.8-flash'),
+            'daily_limit'        => $dailyLimit,
+            'used_requests'      => $usedRequests,
+            'remaining_requests' => $remaining,
+            'used_tokens'        => $usedTokens,
+            'percentage'         => $percent,
+            'has_api_key'        => !empty(config('services.gemini.api_key')),
+            'last_used'          => \App\Models\Setting::get('gemini_last_used'),
+            'last_error'         => \App\Models\Setting::get('gemini_last_error'),
+            'last_error_time'    => \App\Models\Setting::get('gemini_last_error_time'),
+        ];
     }
 }

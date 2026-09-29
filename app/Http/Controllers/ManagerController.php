@@ -104,7 +104,8 @@ class ManagerController extends Controller
     public function settings()
     {
         $showDemoCredentials = \App\Models\Setting::isTrue('show_demo_credentials', true);
-        return view('manager.settings', compact('showDemoCredentials'));
+        $geminiStats = \App\Services\GeminiService::getUsageStats();
+        return view('manager.settings', compact('showDemoCredentials', 'geminiStats'));
     }
 
     public function updateSettings(Request $request)
@@ -121,5 +122,15 @@ class ManagerController extends Controller
         }
 
         return redirect()->route('manager.settings')->with('success', 'Pengaturan berhasil disimpan.');
+    }
+
+    public function resetGeminiQuota()
+    {
+        $today = now()->toDateString();
+        \App\Models\Setting::set("gemini_req_{$today}", 0);
+        \App\Models\Setting::set("gemini_tok_{$today}", 0);
+        \App\Models\Setting::set('gemini_last_error', '');
+
+        return redirect()->route('manager.settings')->with('success', 'Statistik kuota Gemini untuk hari ini berhasil di-reset.');
     }
 }

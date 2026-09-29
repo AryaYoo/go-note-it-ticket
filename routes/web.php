@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/settings', [\App\Http\Controllers\ManagerController::class, 'settings'])->name('settings');
         Route::post('/settings', [\App\Http\Controllers\ManagerController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/settings/reset-gemini', [\App\Http\Controllers\ManagerController::class, 'resetGeminiQuota'])->name('settings.reset-gemini');
     });
 
     // Profile (Breeze)

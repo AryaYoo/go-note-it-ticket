@@ -195,6 +195,86 @@
             </div>
         </form>
     </div>
+
+    <div class="settings-card">
+        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <div class="settings-card-title">Pemantauan Kuota Gemini AI</div>
+                <div class="settings-card-desc">Estimasi penggunaan request & token harian (Google Free Tier)</div>
+            </div>
+            <div>
+                @if(!$geminiStats['has_api_key'])
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #FEE2E2; color: #DC2626;">API Key Belum Diisi</span>
+                @elseif(!empty($geminiStats['last_error']))
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #FEF3C7; color: #D97706;">{{ $geminiStats['last_error'] }}</span>
+                @elseif($geminiStats['remaining_requests'] <= 0)
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #FEE2E2; color: #DC2626;">Limit Habis</span>
+                @else
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #DCFCE7; color: #16A34A;">● Siap Digunakan</span>
+                @endif
+            </div>
+        </div>
+
+        <div style="padding: 20px 22px;">
+            <!-- 4 Metrik Sederhana -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                <div style="background: #F9FAFB; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;">
+                    <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500;">Request Hari Ini</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text);">
+                        {{ $geminiStats['used_requests'] }} <span style="font-size: 12px; font-weight: 400; color: var(--muted);">/ {{ $geminiStats['daily_limit'] }}</span>
+                    </div>
+                </div>
+
+                <div style="background: #F9FAFB; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;">
+                    <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500;">Sisa Request</div>
+                    <div style="font-size: 18px; font-weight: 700; color: {{ $geminiStats['remaining_requests'] > 0 ? '#16A34A' : '#DC2626' }};">
+                        {{ $geminiStats['remaining_requests'] }} <span style="font-size: 11px; font-weight: 400; color: var(--muted);">tersisa</span>
+                    </div>
+                </div>
+
+                <div style="background: #F9FAFB; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;">
+                    <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500;">Token Terpakai</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text);">
+                        {{ number_format($geminiStats['used_tokens']) }}
+                    </div>
+                </div>
+
+                <div style="background: #F9FAFB; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;">
+                    <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500;">Model Aktif</div>
+                    <div style="font-size: 12.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $geminiStats['model'] }}">
+                        {{ $geminiStats['model'] }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 5px;">
+                    <span>Beban Kuota Harian</span>
+                    <span>{{ $geminiStats['percentage'] }}%</span>
+                </div>
+                <div style="width: 100%; height: 7px; background: #E5E7EB; border-radius: 4px; overflow: hidden;">
+                    <div style="width: {{ $geminiStats['percentage'] }}%; height: 100%; background: {{ $geminiStats['percentage'] >= 100 ? '#DC2626' : ($geminiStats['percentage'] >= 80 ? '#D97706' : '#2563EB') }}; border-radius: 4px; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+
+            <!-- Footer Keterangan & Aksi -->
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--muted); border-top: 1px solid #F3F4F6; padding-top: 12px;">
+                <div>
+                    ℹ️ Kuota harian akun gratis di-reset otomatis setiap pukul 07:00 WIB.
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <form action="{{ route('manager.settings.reset-gemini') }}" method="POST" onsubmit="return confirm('Reset statistik kuota hari ini? (Gunakan jika Anda baru saja mengganti API Key).')">
+                        @csrf
+                        <button type="submit" style="background: none; border: none; color: var(--muted); text-decoration: underline; font-size: 11px; cursor: pointer; padding: 0;">Reset Hitungan</button>
+                    </form>
+                    <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener noreferrer" style="color: #2563EB; text-decoration: none; font-weight: 500;">
+                        Cek Resmi di AI Studio ↗
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
