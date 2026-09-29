@@ -683,6 +683,10 @@ btnAnalyze.addEventListener('click', async () => {
         let errorMsg = err.message || 'Gagal menganalisis gambar.';
         if (errorMsg === 'Failed to fetch') {
             errorMsg = 'Gagal terhubung ke server (Failed to fetch).\n\nKemungkinan penyebab:\n1. Ukuran file upload melebihi limit Nginx/PHP (client_max_body_size).\n2. Request time out saat memproses AI.\n3. Masalah Mixed Content HTTPS/HTTP.';
+        } else if (errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota exceeded') || errorMsg.toLowerCase().includes('exceeded your current quota')) {
+            const match = errorMsg.match(/retry in ([\d\.]+)s/i);
+            const waitSec = match ? Math.ceil(parseFloat(match[1])) : 40;
+            errorMsg = `Batas Kuota AI (Rate Limit 429) tercapai.\n\nGoogle mewajibkan jeda waktu cooldown. Harap tunggu sekitar ${waitSec} detik sebelum mengklik "Analisis" kembali agar kuota ter-reset.`;
         }
         Swal.fire({ icon: 'error', title: 'Analisis Gagal', text: errorMsg });
     } finally {
