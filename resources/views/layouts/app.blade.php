@@ -78,6 +78,12 @@
             @endif
         </nav>
 
+        {{-- Live Real-time Clock Widget --}}
+        <div class="sidebar-clock" style="padding: 10px 14px; margin: 0 12px 14px 12px; background: #FFFFFF; border: 1px solid var(--border); border-radius: 8px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div id="sidebar-live-time" style="font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0.5px; font-family: 'Inter', monospace;">00:00:00</div>
+            <div id="sidebar-live-date" style="font-size: 11px; color: var(--muted); margin-top: 2px;">-- --- ----</div>
+        </div>
+
         <div class="sidebar-user">
             <div class="user-info">
                 <div class="user-avatar" title="{{ Auth::user()->name }} ({{ Auth::user()->divisi ?? 'IT Support' }})">{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}</div>
@@ -127,6 +133,27 @@ Swal.fire({
 
 @stack('scripts')
 <script>
+    // Live Sidebar Clock (Jam, Menit, Detik & Tanggal Realtime)
+    function updateSidebarClock() {
+        const now = new Date();
+        const timeEl = document.getElementById('sidebar-live-time');
+        const dateEl = document.getElementById('sidebar-live-date');
+        
+        if (timeEl) {
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            timeEl.textContent = `${h}:${m}:${s}`;
+        }
+        
+        if (dateEl) {
+            const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+            dateEl.textContent = now.toLocaleDateString('id-ID', options);
+        }
+    }
+    updateSidebarClock();
+    setInterval(updateSidebarClock, 1000);
+
     // Desktop sidebar collapse toggle
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
