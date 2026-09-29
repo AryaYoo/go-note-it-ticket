@@ -441,7 +441,72 @@ const previewCountLabel = document.getElementById('preview-count-label');
 
 let selectedFiles = []; // Array of File objects (max 3)
 
-function addFiles(files) {
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// Kompresi gambar langsung di browser (Client-side via HTML5 Canvas)
+async function compressImage(file, maxWidth = 1600, quality = 0.8) {
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        return file;
+    }
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+
+            let width = img.width;
+            let height = img.height;
+
+            // Resize proporsional jika lebar melebihi maxWidth (1600px sangat tajam untuk OCR WhatsApp)
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            // Background putih untuk menjaga teks tetap jelas jika PNG transparan
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob((blob) => {
+                if (!blob || blob.size >= file.size) {
+                    // Jika kompresi tidak memperkecil ukuran, pakai file asli
+                    return resolve(file);
+                }
+
+                // Ganti ekstensi jadi .jpg agar seragam dan ringan
+                const originalName = file.name || 'pasted_image.png';
+                const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                const newFile = new File([blob], `${baseName}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+
+                resolve(newFile);
+            }, 'image/jpeg', quality);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file); // fallback jika gagal dimuat
+        };
+
+        img.src = objectUrl;
+    });
+}
+
+async function addFiles(files) {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
 
@@ -456,8 +521,12 @@ function addFiles(files) {
             });
             break;
         }
-        if (!selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
-            selectedFiles.push(f);
+
+        // Kompresi otomatis segera setelah file diterima (termasuk hasil Ctrl+V)
+        const processed = await compressImage(f);
+
+        if (!selectedFiles.some(existing => existing.name === processed.name && existing.size === processed.size)) {
+            selectedFiles.push(processed);
         }
     }
     renderPreviews();
@@ -494,8 +563,9 @@ function renderPreviews() {
                 <img src="${imgUrl}" alt="Preview ${idx + 1}" style="width:100%;height:100%;object-fit:cover;">
             </div>
             <div style="padding:6px 8px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-top:1px solid var(--border);">
-                <div style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;" title="${file.name}">
-                    ${file.name}
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:115px;" title="${file.name}">
+                    <div style="font-size:11px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;">${file.name}</div>
+                    <div style="font-size:10px;color:var(--text-light);">${formatFileSize(file.size)} <span style="color:#059669;font-weight:600;">(dikompres)</span></div>
                 </div>
                 <button type="button" onclick="removeFile(${idx})" title="Hapus foto" style="background:#FEE2E2;color:#DC2626;border:none;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;font-weight:700;">✕</button>
             </div>
