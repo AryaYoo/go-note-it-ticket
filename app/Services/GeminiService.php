@@ -2,32 +2,99 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class GeminiService
 {
-    private string $apiKey;
-    private string $apiUrl;
+    /** @var string[] */
+    private array $apiKeys = [];
+    private string $model;
 
     public function __construct()
     {
-        $this->apiKey = config('services.gemini.api_key', '');
-        $model = config('services.gemini.model', 'gemini-3.8-flash');
-        $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+        $this->model = config('services.gemini.model', 'gemini-3.8-flash');
+
+        // Mendukung multi-key dari GEMINI_API_KEYS atau GEMINI_API_KEY (bisa dipisah koma)
+        $rawKeys = config('services.gemini.api_keys') ?: config('services.gemini.api_key', '');
+        if (is_array($rawKeys)) {
+            $this->apiKeys = array_values(array_filter($rawKeys));
+        } elseif (is_string($rawKeys) && !empty(trim($rawKeys))) {
+            $this->apiKeys = array_values(array_filter(array_map('trim', explode(',', $rawKeys))));
+        }
+    }
+
+    /**
+     * Eksekusi request ke Gemini API dengan otomatis beralih (failover/rotasi)
+     * ke API key berikutnya jika terjadi error 429 (Quota Exceeded / Rate Limit).
+     */
+    private function executeWithFallback(array $payload, int $timeout = 45): array
+    {
+        if (empty($this->apiKeys)) {
+            throw new \RuntimeException('GEMINI_API_KEY belum dikonfigurasi di file .env.');
+        }
+
+        $totalKeys = count($this->apiKeys);
+        $lastException = null;
+
+        foreach ($this->apiKeys as $index => $apiKey) {
+            $keyNumber = $index + 1;
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$apiKey}";
+
+            try {
+                $response = Http::timeout($timeout)->post($url, $payload);
+
+                if ($response->successful()) {
+                    $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
+                    self::recordUsage($tokens);
+                    return $response->json();
+                }
+
+                $status = $response->status();
+                $body   = $response->json();
+                $msg    = $body['error']['message'] ?? $response->body();
+
+                // Jika terkena kuota / rate limit (429) dan masih ada key cadangan
+                if ($status === 429) {
+                    Log::warning("Gemini API Key #{$keyNumber} terkena kuota limit (429). Mencoba beralih ke key cadangan berikutnya.", [
+                        'key_index'  => $keyNumber,
+                        'total_keys' => $totalKeys,
+                    ]);
+
+                    if ($index < $totalKeys - 1) {
+                        // Beralih ke API key cadangan berikutnya!
+                        continue;
+                    }
+
+                    // Jika SEMUA key yang terdaftar sudah kehabisan kuota
+                    self::recordError("Rate Limit (429) - Seluruh {$totalKeys} API Key Habis");
+                    throw new \RuntimeException("Semua API Key Gemini ({$totalKeys} key) telah mencapai limit kuota (429). Harap tunggu jeda cooldown atau tambahkan API key baru.");
+                }
+
+                // Error selain 429 (misal prompt error atau 400/404)
+                Log::error("Gemini API error ({$status}) pada Key #{$keyNumber}", ['status' => $status, 'message' => $msg]);
+                throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
+
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                if ($e instanceof \RuntimeException && str_contains($e->getMessage(), '429') && $index < $totalKeys - 1) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
+
+        throw $lastException ?? new \RuntimeException('Gagal memproses request Gemini AI.');
     }
 
     /**
      * Analisis satu atau beberapa tangkapan layar WhatsApp (maks 3 gambar).
      *
-     * @param  string[] $imagePaths  Array path file gambar
+     * @param  string[] $imagePaths Array path file gambar
      */
     public function analyzeWhatsAppScreenshot(array $imagePaths): array
     {
-        if (empty($this->apiKey)) {
-            throw new \RuntimeException('GEMINI_API_KEY belum dikonfigurasi.');
-        }
-
         if (empty($imagePaths)) {
             throw new \RuntimeException('Tidak ada gambar yang dikirim untuk dianalisis.');
         }
@@ -80,10 +147,9 @@ Panduan kategori:
 Jika informasi tidak cukup untuk menentukan suatu field, gunakan nilai terbaik yang dapat kamu simpulkan dari konteks.
 PROMPT;
 
-        // Gabungkan semua gambar + teks prompt dalam satu request
         $parts = array_merge($imageParts, [['text' => $prompt]]);
 
-        $response = Http::timeout(45)->post("{$this->apiUrl}?key={$this->apiKey}", [
+        $responseJson = $this->executeWithFallback([
             'contents' => [
                 ['parts' => $parts],
             ],
@@ -91,24 +157,9 @@ PROMPT;
                 'temperature'     => 0.2,
                 'maxOutputTokens' => 1024,
             ],
-        ]);
+        ], 45);
 
-        if (!$response->successful()) {
-            $status = $response->status();
-            $body = $response->json();
-            $msg = $body['error']['message'] ?? $response->body();
-            if ($status === 429) {
-                self::recordError('Rate Limit (429)');
-            }
-            Log::error('Gemini API error', ['status' => $status, 'message' => $msg]);
-            throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
-        }
-
-        // Catat penggunaan token & request
-        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
-        self::recordUsage($tokens);
-
-        $text = $response->json('candidates.0.content.parts.0.text', '');
+        $text = data_get($responseJson, 'candidates.0.content.parts.0.text', '');
         // Bersihkan markdown code block jika ada
         $text = preg_replace('/```json\s*/i', '', $text);
         $text = preg_replace('/```\s*/i', '', $text);
@@ -128,10 +179,6 @@ PROMPT;
      */
     public function generateRecommendations(array $stats): string
     {
-        if (empty($this->apiKey)) {
-            return 'API Key belum dikonfigurasi.';
-        }
-
         $statsText = json_encode($stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $prompt = <<<PROMPT
@@ -144,24 +191,21 @@ Format setiap rekomendasi sebagai satu kalimat yang dimulai dengan kata kerja.
 Kembalikan HANYA daftar rekomendasi, satu per baris, tanpa penomoran, tanpa bullet, tanpa teks tambahan.
 PROMPT;
 
-        $response = Http::timeout(30)->post("{$this->apiUrl}?key={$this->apiKey}", [
-            'contents' => [
-                ['parts' => [['text' => $prompt]]],
-            ],
-            'generationConfig' => [
-                'temperature'     => 0.4,
-                'maxOutputTokens' => 512,
-            ],
-        ]);
+        try {
+            $responseJson = $this->executeWithFallback([
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]],
+                ],
+                'generationConfig' => [
+                    'temperature'     => 0.4,
+                    'maxOutputTokens' => 512,
+                ],
+            ], 30);
 
-        if (!$response->successful()) {
+            return data_get($responseJson, 'candidates.0.content.parts.0.text', 'Tidak ada rekomendasi.');
+        } catch (\Throwable $e) {
             return 'Rekomendasi tidak tersedia saat ini.';
         }
-
-        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
-        self::recordUsage($tokens);
-
-        return $response->json('candidates.0.content.parts.0.text', 'Tidak ada rekomendasi.');
     }
 
     /**
@@ -169,13 +213,9 @@ PROMPT;
      */
     public function analyzeTicket(string $prompt, array $images = []): string
     {
-        if (empty($this->apiKey)) {
-            throw new \RuntimeException('GEMINI_API_KEY belum dikonfigurasi di file .env.');
-        }
-
         $parts = [['text' => $prompt]];
 
-        $response = Http::timeout(60)->post("{$this->apiUrl}?key={$this->apiKey}", [
+        $responseJson = $this->executeWithFallback([
             'contents' => [
                 ['parts' => $parts],
             ],
@@ -183,23 +223,9 @@ PROMPT;
                 'temperature'     => 0.4,
                 'maxOutputTokens' => 4096,
             ],
-        ]);
+        ], 60);
 
-        if (!$response->successful()) {
-            $status = $response->status();
-            $body = $response->json();
-            $msg = $body['error']['message'] ?? $response->body();
-            if ($status === 429) {
-                self::recordError('Rate Limit (429)');
-            }
-            Log::error('Gemini API error on analyzeTicket', ['status' => $status, 'message' => $msg]);
-            throw new \RuntimeException("Gemini API error ({$status}): {$msg}");
-        }
-
-        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
-        self::recordUsage($tokens);
-
-        return $response->json('candidates.0.content.parts.0.text', 'Tidak ada konten analisis yang dihasilkan.');
+        return data_get($responseJson, 'candidates.0.content.parts.0.text', 'Tidak ada konten analisis yang dihasilkan.');
     }
 
     /**
@@ -208,18 +234,18 @@ PROMPT;
     public static function recordUsage(int $tokens = 0): void
     {
         try {
-            $today = now()->toDateString();
+            $today  = now()->toDateString();
             $reqKey = "gemini_req_{$today}";
             $tokKey = "gemini_tok_{$today}";
 
-            $currReq = (int) \App\Models\Setting::get($reqKey, 0);
-            \App\Models\Setting::set($reqKey, $currReq + 1);
+            $currReq = (int) Setting::get($reqKey, 0);
+            Setting::set($reqKey, $currReq + 1);
 
-            $currTok = (int) \App\Models\Setting::get($tokKey, 0);
-            \App\Models\Setting::set($tokKey, $currTok + $tokens);
+            $currTok = (int) Setting::get($tokKey, 0);
+            Setting::set($tokKey, $currTok + $tokens);
 
-            \App\Models\Setting::set('gemini_last_used', now()->toDateTimeString());
-            \App\Models\Setting::set('gemini_last_error', '');
+            Setting::set('gemini_last_used', now()->toDateTimeString());
+            Setting::set('gemini_last_error', '');
         } catch (\Throwable $e) {
             Log::warning('Gagal mencatat statistik penggunaan Gemini: ' . $e->getMessage());
         }
@@ -231,8 +257,8 @@ PROMPT;
     public static function recordError(string $error): void
     {
         try {
-            \App\Models\Setting::set('gemini_last_error', $error);
-            \App\Models\Setting::set('gemini_last_error_time', now()->toDateTimeString());
+            Setting::set('gemini_last_error', $error);
+            Setting::set('gemini_last_error_time', now()->toDateTimeString());
         } catch (\Throwable $e) {}
     }
 
@@ -241,24 +267,36 @@ PROMPT;
      */
     public static function getUsageStats(): array
     {
-        $today = now()->toDateString();
-        $dailyLimit = 20; // Batas standar Free Tier per hari/window untuk model terbaru
-        $usedRequests = (int) \App\Models\Setting::get("gemini_req_{$today}", 0);
-        $usedTokens = (int) \App\Models\Setting::get("gemini_tok_{$today}", 0);
-        $remaining = max(0, $dailyLimit - $usedRequests);
-        $percent = min(100, (int) round(($usedRequests / $dailyLimit) * 100));
+        $today   = now()->toDateString();
+        $rawKeys = config('services.gemini.api_keys') ?: config('services.gemini.api_key', '');
+        $keys = [];
+        if (is_array($rawKeys)) {
+            $keys = array_values(array_filter($rawKeys));
+        } elseif (is_string($rawKeys) && !empty(trim($rawKeys))) {
+            $keys = array_values(array_filter(array_map('trim', explode(',', $rawKeys))));
+        }
+
+        $totalKeys = max(1, count($keys));
+        $hasKey = !empty($keys);
+        $dailyLimit = $totalKeys * 20; // 20 request per key di Free Tier
+
+        $usedRequests = (int) Setting::get("gemini_req_{$today}", 0);
+        $usedTokens   = (int) Setting::get("gemini_tok_{$today}", 0);
+        $remaining    = max(0, $dailyLimit - $usedRequests);
+        $percent      = min(100, (int) round(($usedRequests / $dailyLimit) * 100));
 
         return [
             'model'              => config('services.gemini.model', 'gemini-3.8-flash'),
+            'total_keys'         => count($keys),
             'daily_limit'        => $dailyLimit,
             'used_requests'      => $usedRequests,
             'remaining_requests' => $remaining,
             'used_tokens'        => $usedTokens,
             'percentage'         => $percent,
-            'has_api_key'        => !empty(config('services.gemini.api_key')),
-            'last_used'          => \App\Models\Setting::get('gemini_last_used'),
-            'last_error'         => \App\Models\Setting::get('gemini_last_error'),
-            'last_error_time'    => \App\Models\Setting::get('gemini_last_error_time'),
+            'has_api_key'        => $hasKey,
+            'last_used'          => Setting::get('gemini_last_used'),
+            'last_error'         => Setting::get('gemini_last_error'),
+            'last_error_time'    => Setting::get('gemini_last_error_time'),
         ];
     }
 }
