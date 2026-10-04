@@ -36,9 +36,11 @@ return [
     ],
 
     'gemini' => [
-        'api_key'  => env('GEMINI_API_KEY', ''),
-        'api_keys' => env('GEMINI_API_KEYS', ''),
-        'model'    => env('GEMINI_MODEL', 'gemini-3.8-flash'),
+        // --- Tiket: Analisis gambar WhatsApp & rekomendasi ---
+        'tiket' => [
+            'api_key' => env('GEMINI_API_KEY_TIKET', ''),
+            'model'   => env('GEMINI_MODEL_TIKET', 'gemini-2.0-flash'),
+        ],
     ],
 
 ];
