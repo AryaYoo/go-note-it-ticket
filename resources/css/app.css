@@ -202,8 +202,8 @@ body.sidebar-collapsed .user-avatar {
     border-radius: 9px;
     margin: 8px 10px 14px 10px;
     padding: 10px 6px 8px 6px;
-    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    border: none;
 }
 
 .sidebar-admin-group .sidebar-group-header {
@@ -254,7 +254,7 @@ body.sidebar-collapsed .user-avatar {
     color: #1E40AF;
     font-weight: 600;
     border-right: none !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    box-shadow: none;
 }
 
 .sidebar-admin-group .nav-item.active svg {
