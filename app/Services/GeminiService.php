@@ -128,6 +128,13 @@ PROMPT;
             throw new \RuntimeException('Respons AI tidak dapat diproses. Coba ulangi analisis.');
         }
 
+        // Tanggal penyelesaian selalu default ke tanggal saat ini (hari ini) jika status Closed
+        if (isset($data['status']) && strtolower($data['status']) === 'closed') {
+            $data['tanggal_penyelesaian'] = now()->format('Y-m-d');
+        } else {
+            $data['tanggal_penyelesaian'] = null;
+        }
+
         return $data;
     }
 

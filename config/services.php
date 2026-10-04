@@ -41,6 +41,11 @@ return [
             'api_key' => env('GEMINI_API_KEY_TIKET', ''),
             'model'   => env('GEMINI_MODEL_TIKET', 'gemini-2.0-flash'),
         ],
+        // --- Dokumentasi: Chat & pencarian tiket serupa ---
+        'dokumentasi' => [
+            'api_key' => env('GEMINI_API_KEY_DOCUMENTATION', ''),
+            'model'   => env('GEMINI_MODEL_DOCUMENTATION', 'gemini-2.0-flash'),
+        ],
     ],
 
 ];

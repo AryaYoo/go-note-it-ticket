@@ -662,7 +662,15 @@ btnAnalyze.addEventListener('click', async () => {
         if (d.dampak_operasional)   setValue('f-dampak_operasional', d.dampak_operasional);
         if (d.status)               setSelect('f-status', d.status);
         if (d.tindakan_dilakukan)   setValue('f-tindakan_dilakukan', d.tindakan_dilakukan);
-        if (d.tanggal_penyelesaian) setValue('f-tanggal_penyelesaian', d.tanggal_penyelesaian);
+        
+        // Tanggal Penyelesaian: jika status Closed, selalu isi default ke tanggal hari ini (waktu saat ini)
+        if (d.status === 'Closed') {
+            const today = new Date().toISOString().split('T')[0];
+            setValue('f-tanggal_penyelesaian', today);
+        } else {
+            setValue('f-tanggal_penyelesaian', '');
+        }
+
         if (d.solusi_diberikan)     setValue('f-solusi_diberikan', d.solusi_diberikan);
         if (d.root_cause)           setValue('f-root_cause', d.root_cause);
 
@@ -702,6 +710,23 @@ function setSelect(id, val) {
 function setValue(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = val;
+}
+
+// Auto-isi tanggal penyelesaian ke hari ini saat status Closed
+const statusEl = document.getElementById('f-status');
+if (statusEl) {
+    statusEl.addEventListener('change', function() {
+        const tglEl = document.getElementById('f-tanggal_penyelesaian');
+        if (tglEl) {
+            if (this.value === 'Closed') {
+                if (!tglEl.value) {
+                    tglEl.value = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                tglEl.value = '';
+            }
+        }
+    });
 }
 
 // ============================================================

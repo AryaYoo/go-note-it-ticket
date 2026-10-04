@@ -34,6 +34,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{ticket}/image/{index?}', [TicketController::class, 'image'])->name('tickets.image');
     Route::get('/tickets/export/download', [TicketController::class, 'export'])->name('tickets.export');
 
+    // Documentation
+    Route::get('/documentation', [\App\Http\Controllers\DocumentationController::class, 'index'])->name('documentation');
+    Route::post('/documentation/chat', [\App\Http\Controllers\DocumentationController::class, 'chat'])->name('documentation.chat');
+    Route::get('/documentation/chat/{chat}/image/{index?}', [\App\Http\Controllers\DocumentationController::class, 'image'])->name('documentation.image');
+    Route::delete('/documentation/chat/{id}', [\App\Http\Controllers\DocumentationController::class, 'destroy'])->name('documentation.destroy');
+    Route::delete('/documentation/chats', [\App\Http\Controllers\DocumentationController::class, 'clearAll'])->name('documentation.clear-all');
+
 
 
     // Manager Routes

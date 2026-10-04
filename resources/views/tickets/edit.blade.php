@@ -174,6 +174,21 @@
 
 @push('scripts')
 <script>
+// Auto-isi tanggal penyelesaian saat status diubah ke Closed
+const editStatusSelect = document.querySelector('select[name="status"]');
+const editTglInput = document.querySelector('input[name="tanggal_penyelesaian"]');
+if (editStatusSelect && editTglInput) {
+    editStatusSelect.addEventListener('change', function() {
+        if (this.value === 'Closed') {
+            if (!editTglInput.value) {
+                editTglInput.value = new Date().toISOString().split('T')[0];
+            }
+        } else {
+            editTglInput.value = '';
+        }
+    });
+}
+
 document.getElementById('edit-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const btn = document.getElementById('btn-update');
