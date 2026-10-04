@@ -194,12 +194,12 @@
 
     <!-- Card 1: Tampilan & Aksesibilitas Login -->
     <div class="settings-card" id="card-settings-login" data-card-id="settings-login">
-        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;" onclick="toggleCardCollapse('card-settings-login', event)">
-            <div>
+        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;" onclick="toggleCardCollapse('card-settings-login', event)">
+            <div style="flex: 1; min-width: 0;">
                 <div class="settings-card-title">Tampilan & Aksesibilitas Login</div>
                 <div class="settings-card-desc">Atur elemen yang tampil untuk pengguna umum saat membuka form autentikasi</div>
             </div>
-            <div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
                 <button type="button" class="card-collapse-btn" aria-label="Minimize Card" title="Minimize / Perluas">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
@@ -248,12 +248,12 @@
 
     <!-- Card 2: Kuota Gemini AI - Analisis Tiket -->
     <div class="settings-card" id="card-gemini-tiket" data-card-id="gemini-tiket">
-        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;" onclick="toggleCardCollapse('card-gemini-tiket', event)">
-            <div>
+        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;" onclick="toggleCardCollapse('card-gemini-tiket', event)">
+            <div style="flex: 1; min-width: 0;">
                 <div class="settings-card-title">Pemantauan Kuota Gemini AI (Analisis Tiket)</div>
                 <div class="settings-card-desc">Estimasi penggunaan request & token harian untuk analisis pesan WhatsApp & rekomendasi (Google Free Tier)</div>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
                 @if(!$geminiStats['has_api_key'])
                     <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #FEE2E2; color: #DC2626;">API Key Belum Diisi</span>
                 @elseif(!empty($geminiStats['last_error']))
@@ -337,12 +337,12 @@
 
     <!-- Card 3: Kuota Gemini AI - Chat Dokumentasi -->
     <div class="settings-card" id="card-gemini-doc" data-card-id="gemini-doc">
-        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;" onclick="toggleCardCollapse('card-gemini-doc', event)">
-            <div>
+        <div class="settings-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;" onclick="toggleCardCollapse('card-gemini-doc', event)">
+            <div style="flex: 1; min-width: 0;">
                 <div class="settings-card-title">Pemantauan Kuota Gemini AI (Chat Dokumentasi)</div>
                 <div class="settings-card-desc">Estimasi penggunaan request & token harian untuk asisten pencarian & tanya-jawab tiket (Google Free Tier)</div>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
                 @if(!$docGeminiStats['has_api_key'])
                     <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #FEE2E2; color: #DC2626;">API Key Belum Diisi</span>
                 @elseif(!empty($docGeminiStats['last_error']))
