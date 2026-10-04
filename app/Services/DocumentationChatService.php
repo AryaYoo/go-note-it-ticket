@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -230,11 +231,78 @@ PROMPT;
 
         if (!$response->successful()) {
             $msg = $response->json('error.message') ?? $response->body();
+            self::recordError("Error HTTP {$response->status()}: " . \Illuminate\Support\Str::limit($msg, 80));
             Log::error('DocumentationChat Gemini error', ['status' => $response->status(), 'msg' => $msg]);
             throw new \RuntimeException("Gemini API error ({$response->status()}): {$msg}");
         }
 
+        $tokens = (int) $response->json('usageMetadata.totalTokenCount', 0);
+        self::recordUsage($tokens);
+
         return data_get($response->json(), 'candidates.0.content.parts.0.text', '');
+    }
+
+    /**
+     * Catat penggunaan request dan token hari ini untuk Chat Dokumentasi.
+     */
+    public static function recordUsage(int $tokens = 0): void
+    {
+        try {
+            $today  = now()->toDateString();
+            $reqKey = "doc_gemini_req_{$today}";
+            $tokKey = "doc_gemini_tok_{$today}";
+
+            $currReq = (int) Setting::get($reqKey, 0);
+            Setting::set($reqKey, $currReq + 1);
+
+            $currTok = (int) Setting::get($tokKey, 0);
+            Setting::set($tokKey, $currTok + $tokens);
+
+            Setting::set('doc_gemini_last_used', now()->toDateTimeString());
+            Setting::set('doc_gemini_last_error', '');
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mencatat statistik penggunaan Gemini Dokumentasi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Catat status error terakhir dari Gemini API Chat Dokumentasi.
+     */
+    public static function recordError(string $error): void
+    {
+        try {
+            Setting::set('doc_gemini_last_error', $error);
+            Setting::set('doc_gemini_last_error_time', now()->toDateTimeString());
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Ambil ringkasan statistik penggunaan kuota Gemini Dokumentasi untuk dashboard settings.
+     */
+    public static function getUsageStats(): array
+    {
+        $today  = now()->toDateString();
+        $apiKey = config('services.gemini.dokumentasi.api_key', '');
+        $hasKey = !empty(trim($apiKey));
+
+        $dailyLimit   = 1500; // 1500 request/hari (Gemini Free Tier)
+        $usedRequests = (int) Setting::get("doc_gemini_req_{$today}", 0);
+        $usedTokens   = (int) Setting::get("doc_gemini_tok_{$today}", 0);
+        $remaining    = max(0, $dailyLimit - $usedRequests);
+        $percent      = min(100, (int) round(($usedRequests / $dailyLimit) * 100));
+
+        return [
+            'model'              => config('services.gemini.dokumentasi.model', 'gemini-2.0-flash'),
+            'daily_limit'        => $dailyLimit,
+            'used_requests'      => $usedRequests,
+            'remaining_requests' => $remaining,
+            'used_tokens'        => $usedTokens,
+            'percentage'         => $percent,
+            'has_api_key'        => $hasKey,
+            'last_used'          => Setting::get('doc_gemini_last_used'),
+            'last_error'         => Setting::get('doc_gemini_last_error'),
+            'last_error_time'    => Setting::get('doc_gemini_last_error_time'),
+        ];
     }
 
     /**

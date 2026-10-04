@@ -105,7 +105,8 @@ class ManagerController extends Controller
     {
         $showDemoCredentials = \App\Models\Setting::isTrue('show_demo_credentials', true);
         $geminiStats = \App\Services\GeminiService::getUsageStats();
-        return view('manager.settings', compact('showDemoCredentials', 'geminiStats'));
+        $docGeminiStats = \App\Services\DocumentationChatService::getUsageStats();
+        return view('manager.settings', compact('showDemoCredentials', 'geminiStats', 'docGeminiStats'));
     }
 
     public function updateSettings(Request $request)
@@ -124,13 +125,24 @@ class ManagerController extends Controller
         return redirect()->route('manager.settings')->with('success', 'Pengaturan berhasil disimpan.');
     }
 
-    public function resetGeminiQuota()
+    public function resetGeminiQuota(Request $request)
     {
         $today = now()->toDateString();
-        \App\Models\Setting::set("gemini_req_{$today}", 0);
-        \App\Models\Setting::set("gemini_tok_{$today}", 0);
-        \App\Models\Setting::set('gemini_last_error', '');
+        $type  = $request->input('type', 'all');
 
-        return redirect()->route('manager.settings')->with('success', 'Statistik kuota Gemini untuk hari ini berhasil di-reset.');
+        if ($type === 'tiket' || $type === 'all') {
+            \App\Models\Setting::set("gemini_req_{$today}", 0);
+            \App\Models\Setting::set("gemini_tok_{$today}", 0);
+            \App\Models\Setting::set('gemini_last_error', '');
+        }
+
+        if ($type === 'documentation' || $type === 'all') {
+            \App\Models\Setting::set("doc_gemini_req_{$today}", 0);
+            \App\Models\Setting::set("doc_gemini_tok_{$today}", 0);
+            \App\Models\Setting::set('doc_gemini_last_error', '');
+        }
+
+        $label = $type === 'documentation' ? 'Chat Dokumentasi' : ($type === 'tiket' ? 'Analisis Tiket' : 'Gemini AI');
+        return redirect()->route('manager.settings')->with('success', "Statistik kuota {$label} untuk hari ini berhasil di-reset.");
     }
 }

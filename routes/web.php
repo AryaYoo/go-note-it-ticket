@@ -38,8 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/documentation', [\App\Http\Controllers\DocumentationController::class, 'index'])->name('documentation');
     Route::post('/documentation/chat', [\App\Http\Controllers\DocumentationController::class, 'chat'])->name('documentation.chat');
     Route::get('/documentation/chat/{chat}/image/{index?}', [\App\Http\Controllers\DocumentationController::class, 'image'])->name('documentation.image');
-    Route::delete('/documentation/chat/{id}', [\App\Http\Controllers\DocumentationController::class, 'destroy'])->name('documentation.destroy');
-    Route::delete('/documentation/chats', [\App\Http\Controllers\DocumentationController::class, 'clearAll'])->name('documentation.clear-all');
+    Route::get('/documentation/conversations', [\App\Http\Controllers\DocumentationController::class, 'getConversations'])->name('documentation.conversations');
+    Route::get('/documentation/conversations/{id}', [\App\Http\Controllers\DocumentationController::class, 'getConversation'])->name('documentation.conversations.show');
+    Route::delete('/documentation/conversations/{id}', [\App\Http\Controllers\DocumentationController::class, 'destroyConversation'])->name('documentation.conversations.destroy');
+    Route::delete('/documentation/conversations', [\App\Http\Controllers\DocumentationController::class, 'clearAllConversations'])->name('documentation.conversations.clear-all');
 
 
 

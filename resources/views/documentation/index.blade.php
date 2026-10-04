@@ -81,14 +81,6 @@
         }
     }
 
-    @keyframes pulseHighlight {
-        0%, 100% { filter: none; }
-        50% { filter: brightness(0.93) drop-shadow(0 0 6px rgba(37,99,235,0.35)); }
-    }
-    .highlight-flash {
-        animation: pulseHighlight 1.4s ease-in-out;
-    }
-
     .msg-avatar {
         width: 26px; height: 26px;
         border-radius: 50%;
@@ -392,39 +384,55 @@
         border-top: 1px solid var(--border);
     }
 
-    /* History item styles */
+    /* History conversation item styles */
     .history-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        padding: 10px 12px;
+        padding: 11px 14px;
         background: #F8FAFC;
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
-        transition: background 120ms, border-color 120ms;
+        transition: background 120ms, border-color 120ms, box-shadow 120ms;
     }
     .history-item:hover {
         background: #EFF6FF;
-        border-color: #BFDBFE;
+        border-color: #93C5FD;
+        box-shadow: 0 1px 3px rgba(37,99,235,0.06);
+    }
+    .history-item.active-conv {
+        background: #EFF6FF;
+        border-color: var(--primary);
     }
     .history-item-content {
         flex: 1;
         min-width: 0;
     }
-    .history-item-q {
-        font-size: 12.5px;
+    .history-item-title {
+        font-size: 13px;
         font-weight: 500;
         color: var(--text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
     .history-item-meta {
         font-size: 11px;
         color: var(--muted);
-        margin-top: 2px;
+        margin-top: 3px;
+    }
+    .history-badge-active {
+        font-size: 10px;
+        background: #DBEAFE;
+        color: var(--primary);
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-weight: 600;
     }
     .history-item-del {
         background: none;
@@ -433,8 +441,9 @@
         cursor: pointer;
         padding: 4px 6px;
         border-radius: 4px;
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1;
+        transition: color 120ms, background 120ms;
     }
     .history-item-del:hover {
         color: #DC2626;
@@ -450,10 +459,16 @@
     <div class="page-header" style="flex-shrink: 0; margin-bottom: 14px;">
         <div>
             <h1>Dokumentasi</h1>
-            <div class="page-header-sub">Tanya jawab AI seputar kendala IT & solusi tiket</div>
+            <div class="page-header-sub" id="header-sub">
+                {{ $activeConversation ? $activeConversation->title : 'Tanya jawab AI seputar kendala IT & solusi tiket' }}
+            </div>
         </div>
         <div class="flex gap-8">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-chat-history" onclick="openHistoryModal()">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-new-chat" onclick="startNewChat()" title="Buat percakapan baru">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Chat Baru
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-chat-history" onclick="openHistoryModal()" title="Buka riwayat percakapan">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
@@ -531,7 +546,7 @@
                 </svg>
             </button>
 
-            <textarea id="chat-input" placeholder="Ketik pertanyaan atau tekan Ctrl+V untuk melampirkan screenshot WhatsApp…" rows="1" autocomplete="off"></textarea>
+            <textarea id="chat-input" placeholder="Ketik pertanyaan atau tekan Ctrl+V untuk screenshot…" rows="1" autocomplete="off"></textarea>
             
             <button id="send-btn" title="Kirim" disabled>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -547,8 +562,8 @@
     <div class="custom-modal" onclick="event.stopPropagation()">
         <div class="custom-modal-header">
             <div>
-                <h3 class="custom-modal-title">Riwayat Chat</h3>
-                <div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">Daftar pertanyaan dan referensi sebelumnya</div>
+                <h3 class="custom-modal-title">Riwayat Percakapan</h3>
+                <div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">Daftar sesi chat dan tanya jawab AI sebelumnya</div>
             </div>
             <button type="button" onclick="closeHistoryModal()" class="custom-modal-close" title="Tutup">&times;</button>
         </div>
@@ -556,8 +571,8 @@
             <!-- Diisi via JavaScript -->
         </div>
         <div class="custom-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" onclick="clearAllHistory()" class="btn btn-danger btn-sm" id="btn-clear-history" style="display: none;">
-                Hapus Semua
+            <button type="button" onclick="clearAllConversations()" class="btn btn-danger btn-sm" id="btn-clear-history" style="display: none;">
+                Hapus Semua Riwayat
             </button>
             <div style="margin-left: auto;">
                 <button type="button" onclick="closeHistoryModal()" class="btn btn-secondary btn-sm">Tutup</button>
@@ -569,26 +584,20 @@
 
 @push('scripts')
 <script>
-const csrfToken   = document.querySelector('meta[name="csrf-token"]').content;
-const chatWindow  = document.getElementById('chat-window');
-const chatInput   = document.getElementById('chat-input');
-const sendBtn     = document.getElementById('send-btn');
-const imageInput  = document.getElementById('image-file-input');
-const previewStrip= document.getElementById('image-preview-strip');
-const userInitial = '{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}';
+const csrfToken       = document.querySelector('meta[name="csrf-token"]').content;
+const chatWindow      = document.getElementById('chat-window');
+const chatInput       = document.getElementById('chat-input');
+const sendBtn         = document.getElementById('send-btn');
+const imageInput      = document.getElementById('image-file-input');
+const previewStrip    = document.getElementById('image-preview-strip');
+const headerSub       = document.getElementById('header-sub');
+const userInitial     = '{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}';
+
+// State ID Percakapan yang sedang aktif
+let currentConversationId = @js($activeConversation?->id ?? null);
 
 // State lampiran gambar (maks. 3)
 let selectedFiles = [];
-
-// Inisialisasi riwayat chat dari database
-let chatHistory = @js($chats->map(fn($c) => [
-    'id'         => $c->id,
-    'question'   => $c->question,
-    'answer'     => $c->answer,
-    'citations'  => $c->citations ?? [],
-    'images'     => !empty($c->images) ? array_map(fn($idx) => route('documentation.image', ['chat' => $c->id, 'index' => $idx]), array_keys($c->images)) : [],
-    'created_at' => $c->created_at->toISOString(),
-]));
 
 // Auto scroll ke bawah saat pertama kali dibuka
 scrollBot();
@@ -750,6 +759,27 @@ chatInput.addEventListener('keydown', (e) => {
 
 sendBtn.addEventListener('click', sendMessage);
 
+// -------------------------------------------------------------
+// CHAT BARU (RESET KE EMPTY STATE TANPA HAPUS DATA LAMA)
+// -------------------------------------------------------------
+function startNewChat() {
+    currentConversationId = null;
+    chatWindow.innerHTML = `
+        <div class="chat-empty" id="chat-empty">
+            <div>
+                <div>Tanyakan kendala IT, AI akan mencari referensi dari riwayat tiket.</div>
+                <div style="font-size: 11.5px; color: #9CA3AF; margin-top: 4px;">Anda juga dapat melampirkan screenshot percakapan WhatsApp via <strong>Ctrl+V</strong> (maks. 3 gambar).</div>
+            </div>
+        </div>`;
+    headerSub.textContent = 'Percakapan Baru';
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    selectedFiles = [];
+    renderPreviews();
+    updateSendBtnState();
+    chatInput.focus();
+}
+
 async function sendMessage() {
     const rawQuestion = chatInput.value.trim();
     if (rawQuestion.length < 3 && selectedFiles.length === 0) return;
@@ -777,6 +807,9 @@ async function sendMessage() {
 
     const formData = new FormData();
     formData.append('question', question);
+    if (currentConversationId) {
+        formData.append('conversation_id', currentConversationId);
+    }
     filesToSend.forEach(f => formData.append('images[]', f));
 
     try {
@@ -788,15 +821,12 @@ async function sendMessage() {
         const data = await res.json();
         removeTyping(typingId);
         if (data.success) {
+            // Update conversation id jika baru dibuat
+            currentConversationId = data.conversation_id;
+            headerSub.textContent = data.conversation_title || question;
+
             appendAiBubble(data.answer, data.citations, data.id, true);
-            chatHistory.push({
-                id: data.id,
-                question: question,
-                answer: data.answer,
-                citations: data.citations || [],
-                images: data.images || [],
-                created_at: data.created_at || new Date().toISOString()
-            });
+
             const lastUserRow = chatWindow.querySelector('.msg-row.user-row:last-of-type');
             if (lastUserRow && !lastUserRow.getAttribute('data-chat-id')) {
                 lastUserRow.setAttribute('data-chat-id', data.id);
@@ -884,11 +914,11 @@ function renderMd(text) {
 }
 
 // -------------------------------------------------------------
-// History Management (Database-backed)
+// History Management (Conversations / Threads)
 // -------------------------------------------------------------
-function openHistoryModal() {
-    renderHistoryList();
+async function openHistoryModal() {
     document.getElementById('history-modal').classList.remove('hidden');
+    await loadConversationsList();
 }
 
 function closeHistoryModal() {
@@ -903,87 +933,123 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeHistoryModal();
 });
 
-function renderHistoryList() {
+async function loadConversationsList() {
     const listEl = document.getElementById('history-list');
     const clearBtn = document.getElementById('btn-clear-history');
+    listEl.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 24px 0; font-size: 13px;">Memuat daftar percakapan...</div>`;
 
-    if (!chatHistory.length) {
-        listEl.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 28px 0; font-size: 13px;">Belum ada riwayat percakapan tersimpan.</div>`;
-        clearBtn.style.display = 'none';
-        return;
-    }
-
-    clearBtn.style.display = 'inline-block';
-    listEl.innerHTML = '';
-
-    const reversed = [...chatHistory].reverse();
-
-    reversed.forEach(item => {
-        const itemEl = el('div', 'history-item');
-        const d = new Date(item.created_at);
-        const timeStr = isNaN(d) ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        const citCount = (item.citations && item.citations.length) ? `· ${item.citations.length} referensi` : '';
-        const imgBadge = (item.images && item.images.length) ? `· 📷 ${item.images.length} foto` : '';
-
-        itemEl.innerHTML = `
-            <div class="history-item-content" onclick="loadHistoryItem(${item.id})">
-                <div class="history-item-q">${esc(item.question)}</div>
-                <div class="history-item-meta">${timeStr} ${citCount} ${imgBadge}</div>
-            </div>
-            <button type="button" class="history-item-del" onclick="deleteHistoryItem(${item.id}, event)" title="Hapus">&times;</button>
-        `;
-        listEl.appendChild(itemEl);
-    });
-}
-
-function loadHistoryItem(id) {
-    closeHistoryModal();
-    const targetEl = document.querySelector(`.msg-row[data-chat-id="${id}"]`);
-    if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        targetEl.classList.add('highlight-flash');
-        setTimeout(() => targetEl.classList.remove('highlight-flash'), 1600);
-    }
-}
-
-async function deleteHistoryItem(id, event) {
-    event.stopPropagation();
     try {
-        const res = await fetch(`{{ url('/documentation/chat') }}/${id}`, {
+        const res  = await fetch('{{ route("documentation.conversations") }}', {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        const convs = data.conversations || [];
+
+        if (!convs.length) {
+            listEl.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 28px 0; font-size: 13px;">Belum ada riwayat percakapan tersimpan.</div>`;
+            clearBtn.style.display = 'none';
+            return;
+        }
+
+        clearBtn.style.display = 'inline-block';
+        listEl.innerHTML = '';
+
+        convs.forEach(conv => {
+            const itemEl = el('div', 'history-item' + (conv.id === currentConversationId ? ' active-conv' : ''));
+            const d = new Date(conv.updated_at);
+            const timeStr = isNaN(d) ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const msgCountStr = `${conv.messages_count || 0} percakapan`;
+            const activeBadge = conv.id === currentConversationId ? `<span class="history-badge-active">Aktif</span>` : '';
+
+            itemEl.innerHTML = `
+                <div class="history-item-content" onclick="loadConversation(${conv.id})">
+                    <div class="history-item-title">
+                        <span>${esc(conv.title)}</span>
+                        ${activeBadge}
+                    </div>
+                    <div class="history-item-meta">${timeStr} · ${msgCountStr}</div>
+                </div>
+                <button type="button" class="history-item-del" onclick="deleteConversation(${conv.id}, event)" title="Hapus sesi ini">&times;</button>
+            `;
+            listEl.appendChild(itemEl);
+        });
+    } catch {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 20px 0; font-size: 13px;">Gagal memuat riwayat.</div>`;
+    }
+}
+
+// Buka seluruh rangkaian percakapan ke layar
+async function loadConversation(id) {
+    closeHistoryModal();
+    try {
+        const res  = await fetch(`{{ url('/documentation/conversations') }}/${id}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) return;
+
+        const conv = data.conversation;
+        currentConversationId = conv.id;
+        headerSub.textContent = conv.title;
+
+        // Render seluruh pesan rangkaian percakapan
+        chatWindow.innerHTML = '';
+
+        if (!conv.messages || !conv.messages.length) {
+            chatWindow.innerHTML = `
+                <div class="chat-empty" id="chat-empty">
+                    <div>Percakapan ini belum memiliki pesan.</div>
+                </div>`;
+            return;
+        }
+
+        conv.messages.forEach(m => {
+            appendUserBubble(m.question, m.id, false, m.images || []);
+            appendAiBubble(m.answer, m.citations, m.id, false);
+        });
+
+        scrollBot();
+    } catch (e) {
+        console.error('Gagal memuat sesi percakapan:', e);
+    }
+}
+
+async function deleteConversation(id, event) {
+    event.stopPropagation();
+    if (!confirm('Hapus sesi percakapan ini?')) return;
+
+    try {
+        const res = await fetch(`{{ url('/documentation/conversations') }}/${id}`, {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
         });
         const data = await res.json();
         if (data.success) {
-            chatHistory = chatHistory.filter(h => h.id !== id);
-            document.querySelectorAll(`.msg-row[data-chat-id="${id}"]`).forEach(el => el.remove());
-            if (!chatHistory.length) {
-                chatWindow.innerHTML = `<div class="chat-empty" id="chat-empty"><div><div>Tanyakan kendala IT, AI akan mencari referensi dari riwayat tiket.</div><div style="font-size: 11.5px; color: #9CA3AF; margin-top: 4px;">Anda juga dapat melampirkan screenshot percakapan WhatsApp via <strong>Ctrl+V</strong> (maks. 3 gambar).</div></div></div>`;
+            if (currentConversationId === id) {
+                startNewChat();
             }
-            renderHistoryList();
+            await loadConversationsList();
         }
     } catch (e) {
-        console.error('Gagal menghapus pesan riwayat:', e);
+        console.error('Gagal menghapus sesi percakapan:', e);
     }
 }
 
-async function clearAllHistory() {
+async function clearAllConversations() {
     if (!confirm('Hapus seluruh riwayat percakapan dari database?')) return;
 
     try {
-        const res = await fetch('{{ route("documentation.clear-all") }}', {
+        const res = await fetch('{{ route("documentation.conversations.clear-all") }}', {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
         });
         const data = await res.json();
         if (data.success) {
-            chatHistory = [];
-            chatWindow.innerHTML = `<div class="chat-empty" id="chat-empty"><div><div>Tanyakan kendala IT, AI akan mencari referensi dari riwayat tiket.</div><div style="font-size: 11.5px; color: #9CA3AF; margin-top: 4px;">Anda juga dapat melampirkan screenshot percakapan WhatsApp via <strong>Ctrl+V</strong> (maks. 3 gambar).</div></div></div>`;
-            renderHistoryList();
+            startNewChat();
             closeHistoryModal();
         }
     } catch (e) {
-        console.error('Gagal menghapus semua riwayat:', e);
+        console.error('Gagal menghapus semua percakapan:', e);
     }
 }
 </script>

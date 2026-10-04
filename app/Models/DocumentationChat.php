@@ -11,6 +11,7 @@ class DocumentationChat extends Model
     use HasFactory;
 
     protected $fillable = [
+        'conversation_id',
         'user_id',
         'question',
         'answer',
@@ -26,5 +27,10 @@ class DocumentationChat extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(DocumentationConversation::class, 'conversation_id');
     }
 }
