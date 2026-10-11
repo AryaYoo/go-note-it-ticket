@@ -47,7 +47,7 @@
         </div>
 
         <nav class="sidebar-nav">
-            @if(Auth::check() && !Auth::user()->isManager())
+            @if(Auth::check() && !Auth::user()->isManager() && !Auth::user()->isSuperAdmin())
                 <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" title="Home">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     <span>Home</span>
@@ -62,7 +62,31 @@
                 </a>
             @endif
 
+            {{-- ── Super Admin Menu ───────────────────────── --}}
+            @if(Auth::check() && Auth::user()->isSuperAdmin())
+                <div class="sidebar-admin-group" style="background: linear-gradient(135deg,#4F46E5,#7C3AED); border-radius: 10px; margin-bottom: 8px;">
+                    <div class="sidebar-group-header">
+                        <span class="sidebar-group-title" style="color:#fff;">Platform Admin</span>
+                        <span class="sidebar-group-badge" style="background:rgba(255,255,255,0.2); color:#fff;">SA</span>
+                    </div>
+
+                    <a href="{{ route('superadmin.dashboard') }}" class="nav-item {{ request()->routeIs('superadmin.dashboard') ? 'active' : '' }}" title="Dashboard" style="color:#E0E7FF;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{{ route('superadmin.companies') }}" class="nav-item {{ request()->routeIs('superadmin.companies*') ? 'active' : '' }}" title="Perusahaan" style="color:#E0E7FF;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                        <span>Perusahaan</span>
+                    </a>
+                    <a href="{{ route('superadmin.managers') }}" class="nav-item {{ request()->routeIs('superadmin.managers*') ? 'active' : '' }}" title="Manager" style="color:#E0E7FF;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span>Manager</span>
+                    </a>
+                </div>
+            @endif
+
             @if(Auth::check() && Auth::user()->isManager())
+
                 {{-- Kelompok Menu Khusus Admin (Background Biru Brand) --}}
                 <div class="sidebar-admin-group">
                     <div class="sidebar-group-header">
@@ -114,7 +138,15 @@
                 <div class="user-avatar" title="{{ Auth::user()->name }} ({{ Auth::user()->divisi ?? 'IT Support' }})">{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}</div>
                 <div class="user-details">
                     <div class="user-name">{{ Auth::user()->name }}</div>
-                    <div class="user-meta">{{ Auth::user()->divisi ?? 'IT Support' }} · {{ ucfirst(Auth::user()->role) }}</div>
+                    <div class="user-meta">
+                        @if(Auth::user()->isSuperAdmin())
+                            Platform Admin · <span style="color:#7C3AED; font-weight:700;">Super Admin</span>
+                        @elseif(Auth::user()->isManager())
+                            {{ Auth::user()->divisi ?? 'IT Support' }} · {{ ucfirst(Auth::user()->role) }}
+                        @else
+                            {{ Auth::user()->divisi ?? 'IT Support' }} · {{ ucfirst(Auth::user()->role) }}
+                        @endif
+                    </div>
                 </div>
             </div>
             <form method="POST" action="{{ route('logout') }}" class="logout-form">

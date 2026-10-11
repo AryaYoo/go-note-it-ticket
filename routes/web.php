@@ -8,7 +8,10 @@ use Illuminate\Support\Facades\Route;
 // Root redirect
 Route::get('/', function () {
     if (auth()->check()) {
-        return auth()->user()->isManager() ? redirect()->route('manager.dashboard') : redirect()->route('dashboard');
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) return redirect()->route('superadmin.dashboard');
+        if ($user->isManager())    return redirect()->route('manager.dashboard');
+        return redirect()->route('dashboard');
     }
     return redirect()->route('login');
 });
@@ -43,7 +46,21 @@ Route::middleware('auth')->group(function () {
     Route::delete('/documentation/conversations/{id}', [\App\Http\Controllers\DocumentationController::class, 'destroyConversation'])->name('documentation.conversations.destroy');
     Route::delete('/documentation/conversations', [\App\Http\Controllers\DocumentationController::class, 'clearAllConversations'])->name('documentation.conversations.clear-all');
 
+    // Super Admin Routes
+    Route::middleware('role:superadmin')->prefix('superadmin')->name('superadmin.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\SuperAdminController::class, 'dashboard'])->name('dashboard');
 
+        // Companies
+        Route::get('/companies', [\App\Http\Controllers\SuperAdminController::class, 'companies'])->name('companies');
+        Route::post('/companies', [\App\Http\Controllers\SuperAdminController::class, 'storeCompany'])->name('companies.store');
+        Route::put('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'updateCompany'])->name('companies.update');
+        Route::delete('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'destroyCompany'])->name('companies.destroy');
+
+        // Managers
+        Route::get('/managers', [\App\Http\Controllers\SuperAdminController::class, 'managers'])->name('managers');
+        Route::post('/managers', [\App\Http\Controllers\SuperAdminController::class, 'storeManager'])->name('managers.store');
+        Route::delete('/managers/{user}', [\App\Http\Controllers\SuperAdminController::class, 'destroyManager'])->name('managers.destroy');
+    });
 
     // Manager Routes
     Route::middleware('role:manager')->prefix('manager')->name('manager.')->group(function () {

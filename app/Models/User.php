@@ -18,6 +18,7 @@ class User extends Authenticatable
         'password',
         'role',
         'divisi',
+        'company_id',
     ];
 
     protected $hidden = [
@@ -33,14 +34,28 @@ class User extends Authenticatable
         ];
     }
 
-    public function isStaff(): bool
+    public function isSuperAdmin(): bool
     {
-        return in_array($this->role, ['staff', 'user']);
+        return $this->role === 'superadmin';
     }
 
     public function isManager(): bool
     {
         return $this->role === 'manager';
+    }
+
+    public function isStaff(): bool
+    {
+        return in_array($this->role, ['staff', 'user']);
+    }
+
+    /**
+     * Relasi ke perusahaan tempat user ini bernaung.
+     * Superadmin tidak memiliki perusahaan (company_id = null).
+     */
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function tickets()
