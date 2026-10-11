@@ -221,7 +221,7 @@
 </div>
 
 {{-- ── Modal Tambah Manager ─────────────────────────────── --}}
-<div id="addManagerModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+<div id="addManagerModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
             <div class="modal-header-icon">
@@ -272,3 +272,24 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+// Backdrop-safe close: hanya tutup modal jika mousedown DAN mouseup
+// terjadi di backdrop, bukan saat user drag/select teks dari dalam form.
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    var mousedownOnBackdrop = false;
+
+    overlay.addEventListener('mousedown', function(e) {
+        mousedownOnBackdrop = (e.target === overlay);
+    });
+
+    overlay.addEventListener('mouseup', function(e) {
+        if (mousedownOnBackdrop && e.target === overlay) {
+            overlay.classList.remove('open');
+        }
+        mousedownOnBackdrop = false;
+    });
+});
+</script>
+@endpush

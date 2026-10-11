@@ -148,5 +148,42 @@
         </div>
     </div>
 
+    {{-- Seksi 5: Riwayat Aktivitas & Audit Log --}}
+    <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="card-title" style="color:var(--text);display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Riwayat Aktivitas & Audit Log
+            </div>
+            <span style="font-size:11px;color:var(--muted);">{{ $ticket->histories->count() }} aktivitas</span>
+        </div>
+        <div style="padding:14px 16px;">
+            @forelse($ticket->histories as $history)
+            <div style="display:flex;gap:12px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border-light, #F3F4F6);align-items:flex-start;">
+                <div style="width:28px;height:28px;border-radius:50%;background:#EEF2FF;color:#4F46E5;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                    @if($history->action === 'created')
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    @elseif($history->action === 'status_changed')
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    @elseif($history->action === 'deleted')
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    @else
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    @endif
+                </div>
+                <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                        <span style="font-size:12.5px;font-weight:600;color:var(--text);">{{ $history->user->name ?? 'Sistem' }}</span>
+                        <span style="font-size:11px;color:var(--muted);">{{ $history->created_at->format('d/m/Y H:i') }} ({{ $history->created_at->diffForHumans() }})</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-sub, #4B5563);line-height:1.4;">{{ $history->description }}</div>
+                </div>
+            </div>
+            @empty
+            <div style="font-size:12px;color:var(--muted);text-align:center;padding:16px 0;">Belum ada riwayat aktivitas tercatat untuk tiket ini.</div>
+            @endforelse
+        </div>
+    </div>
+
 </div>
 @endsection

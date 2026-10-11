@@ -40,6 +40,8 @@ class MonthlyAnalysisController extends Controller
         }
 
         // Get tickets for this month
+        // CompanyScope aktif: query ini otomatis hanya mengambil tiket milik
+        // perusahaan manager yang sedang login (company_id match).
         $tickets = Ticket::whereMonth('created_at', $month)->whereYear('created_at', $year)->get();
         
         if ($tickets->isEmpty()) {
@@ -73,6 +75,7 @@ class MonthlyAnalysisController extends Controller
             $analysisContent = $geminiService->analyzeTicket($prompt, []);
             
             $analysis = MonthlyAnalysis::create([
+                'company_id' => auth()->user()->company_id,
                 'title' => "Analisis Kinerja Bulan $monthName $year",
                 'month' => $month,
                 'year' => $year,

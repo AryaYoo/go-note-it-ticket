@@ -13,6 +13,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $email    = env('SUPERADMIN_EMAIL', 'superadmin@system.local');
+        $password = env('SUPERADMIN_PASSWORD', 'superadmin123');
+
         // Cek apakah sudah ada superadmin
         $exists = DB::table('users')->where('role', 'superadmin')->exists();
 
@@ -20,8 +23,8 @@ return new class extends Migration
             DB::table('users')->insert([
                 'company_id' => null,  // superadmin tidak terikat perusahaan
                 'name'       => 'Super Admin',
-                'email'      => 'superadmin@system.local',
-                'password'   => Hash::make('superadmin123'),
+                'email'      => $email,
+                'password'   => Hash::make($password),
                 'role'       => 'superadmin',
                 'divisi'     => null,
                 'created_at' => now(),
@@ -32,6 +35,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('users')->where('email', 'superadmin@system.local')->delete();
+        $email = env('SUPERADMIN_EMAIL', 'superadmin@system.local');
+        DB::table('users')->where('email', $email)->delete();
     }
 };

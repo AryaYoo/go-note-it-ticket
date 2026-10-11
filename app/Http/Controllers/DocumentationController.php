@@ -67,10 +67,13 @@ class DocumentationController extends Controller
                 $conversation = DocumentationConversation::where('user_id', $userId)->find($convId);
             }
 
+            $companyId = Auth::user()->company_id;
+
             if (!$conversation) {
                 $conversation = DocumentationConversation::create([
-                    'user_id' => $userId,
-                    'title'   => Str::limit($question, 55),
+                    'company_id' => $companyId,
+                    'user_id'    => $userId,
+                    'title'      => Str::limit($question, 55),
                 ]);
             } else {
                 $conversation->touch(); // Perbarui updated_at agar muncul di paling atas riwayat
@@ -80,8 +83,9 @@ class DocumentationController extends Controller
             $tmpPaths    = [];
 
             if ($request->hasFile('images')) {
+                $companyFolder = $companyId ? 'company_' . $companyId : 'shared';
                 foreach (array_slice($request->file('images'), 0, 3) as $file) {
-                    $storedPaths[] = $file->store('documentation/' . $userId, 'private');
+                    $storedPaths[] = $file->store('documentation/' . $companyFolder . '/' . $userId, 'private');
                     $tmpPaths[]    = $file->getRealPath();
                 }
             }
@@ -91,6 +95,7 @@ class DocumentationController extends Controller
 
             // Simpan riwayat percakapan ke database
             $chatRecord = DocumentationChat::create([
+                'company_id'      => $companyId,
                 'conversation_id' => $conversation->id,
                 'user_id'         => $userId,
                 'question'        => $question,

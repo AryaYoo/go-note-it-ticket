@@ -2,15 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CompanyScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    /**
+     * Daftarkan CompanyScope agar setiap query Ticket
+     * otomatis dibatasi ke company_id user yang sedang login.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CompanyScope());
+    }
 
     protected $fillable = [
+        'company_id',
         'nomor_tiket',
         'tanggal_kejadian',
         'nama_pelapor',
@@ -39,6 +51,11 @@ class Ticket extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     // Scopes filter
@@ -99,5 +116,10 @@ class Ticket extends Model
             'High'   => 'badge-high',
             default  => 'badge-low',
         };
+    }
+
+    public function histories()
+    {
+        return $this->hasMany(TicketHistory::class)->latest();
     }
 }

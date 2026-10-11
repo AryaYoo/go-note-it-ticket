@@ -241,7 +241,7 @@
 </div>
 
 {{-- ── Modal Tambah Perusahaan ──────────────────────────── --}}
-<div id="addCompanyModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+<div id="addCompanyModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
             <div class="modal-header-icon">
@@ -297,7 +297,7 @@
 </div>
 
 {{-- ── Modal Edit Perusahaan ──────────────────────────────── --}}
-<div id="editCompanyModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+<div id="editCompanyModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
             <div class="modal-header-icon">
@@ -350,5 +350,22 @@ function openEditCompany(id, name, email, isActive) {
     document.getElementById('editCompanyStatus').value = isActive ? '1' : '0';
     document.getElementById('editCompanyModal').classList.add('open');
 }
+
+// Backdrop-safe close: hanya tutup modal jika mousedown DAN mouseup
+// terjadi di backdrop, bukan saat user drag/select teks dari dalam form.
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    var mousedownOnBackdrop = false;
+
+    overlay.addEventListener('mousedown', function(e) {
+        mousedownOnBackdrop = (e.target === overlay);
+    });
+
+    overlay.addEventListener('mouseup', function(e) {
+        if (mousedownOnBackdrop && e.target === overlay) {
+            overlay.classList.remove('open');
+        }
+        mousedownOnBackdrop = false;
+    });
+});
 </script>
 @endpush

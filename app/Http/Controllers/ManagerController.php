@@ -8,11 +8,13 @@ class ManagerController extends Controller
 {
     public function dashboard()
     {
-        $totalTickets = \App\Models\Ticket::count();
-        $openTickets = \App\Models\Ticket::where('status', 'Open')->count();
+        $companyId = auth()->user()->company_id;
+
+        $totalTickets     = \App\Models\Ticket::count(); // sudah di-scope otomatis oleh CompanyScope
+        $openTickets      = \App\Models\Ticket::where('status', 'Open')->count();
         $inProgressTickets = \App\Models\Ticket::where('status', 'In Progress')->count();
-        $resolvedTickets = \App\Models\Ticket::where('status', 'Resolved')->count();
-        $closedTickets = \App\Models\Ticket::where('status', 'Closed')->count();
+        $resolvedTickets  = \App\Models\Ticket::where('status', 'Resolved')->count();
+        $closedTickets    = \App\Models\Ticket::where('status', 'Closed')->count();
 
         $ticketsByDivisi = \App\Models\Ticket::selectRaw('divisi_toko, count(*) as count')
             ->groupBy('divisi_toko')
@@ -33,7 +35,10 @@ class ManagerController extends Controller
 
     public function users()
     {
-        $users = \App\Models\User::orderBy('name')->paginate(10);
+        // Hanya tampilkan user dari perusahaan yang sama
+        $users = \App\Models\User::where('company_id', auth()->user()->company_id)
+            ->orderBy('name')
+            ->paginate(10);
         return view('manager.users', compact('users'));
     }
 
@@ -54,11 +59,12 @@ class ManagerController extends Controller
         ]);
 
         \App\Models\User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
-            'role' => $request->role,
-            'divisi' => $request->divisi,
+            'company_id' => auth()->user()->company_id, // ikat ke perusahaan manager ini
+            'name'       => $request->name,
+            'email'      => $request->email,
+            'password'   => \Illuminate\Support\Facades\Hash::make($request->password),
+            'role'       => $request->role,
+            'divisi'     => $request->divisi,
         ]);
 
         return redirect()->route('manager.users')->with('success', 'User berhasil ditambahkan.');
@@ -94,6 +100,11 @@ class ManagerController extends Controller
     {
         if ($user->id === auth()->id()) {
             return redirect()->route('manager.users')->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+
+        // Pastikan user yang dihapus adalah milik perusahaan yang sama
+        if ($user->company_id !== auth()->user()->company_id) {
+            abort(403, 'Unauthorized action.');
         }
 
         $user->delete();
