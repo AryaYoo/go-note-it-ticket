@@ -12,11 +12,38 @@ class DocumentationChatService
 {
     private string $apiKey;
     private string $model;
+    private ?\App\Models\Company $company = null;
 
     public function __construct()
     {
         $this->apiKey = config('services.gemini.dokumentasi.api_key', '');
         $this->model  = config('services.gemini.dokumentasi.model', 'gemini-2.0-flash');
+    }
+
+    public function forCompany(?\App\Models\Company $company): self
+    {
+        $clone = clone $this;
+        $clone->company = $company;
+        return $clone;
+    }
+
+    public function setCompany(?\App\Models\Company $company): self
+    {
+        $this->company = $company;
+        return $this;
+    }
+
+    private function getResolvedApiKey(): string
+    {
+        $company = $this->company ?? auth()->user()?->company;
+        $key = GeminiKeyService::getKeyForCompany($company, 'documentation');
+        return !empty($key) ? $key : ($this->apiKey ?: config('services.gemini.dokumentasi.api_key', ''));
+    }
+
+    private function getResolvedModel(): string
+    {
+        $company = $this->company ?? auth()->user()?->company;
+        return GeminiKeyService::getModelForCompany($company, 'documentation');
     }
 
     /**
@@ -28,8 +55,10 @@ class DocumentationChatService
      */
     public function chat(string $userQuestion, array $imagePaths = []): array
     {
-        if (empty($this->apiKey)) {
-            throw new \RuntimeException('GEMINI_API_KEY_DOCUMENTATION belum dikonfigurasi di file .env.');
+        $apiKey = $this->getResolvedApiKey();
+        if (empty($apiKey)) {
+            $companyName = (auth()->user()?->company?->name) ? ' untuk perusahaan ' . auth()->user()->company->name : '';
+            throw new \RuntimeException("GEMINI_API_KEY_DOCUMENTATION{$companyName} belum dikonfigurasi di file .env.");
         }
 
         // Siapkan part gambar untuk Gemini multimodal
@@ -212,7 +241,9 @@ PROMPT;
      */
     private function callGemini(string $prompt, array $imageParts = []): string
     {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+        $apiKey = $this->getResolvedApiKey();
+        $model  = $this->getResolvedModel();
+        $url    = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
         $parts = [['text' => $prompt]];
         if (!empty($imageParts)) {
@@ -282,7 +313,7 @@ PROMPT;
     public static function getUsageStats(): array
     {
         $today  = now()->toDateString();
-        $apiKey = config('services.gemini.dokumentasi.api_key', '');
+        $apiKey = GeminiKeyService::getKeyForCompany(auth()->user()?->company, 'documentation');
         $hasKey = !empty(trim($apiKey));
 
         $dailyLimit   = 1500; // 1500 request/hari (Gemini Free Tier)

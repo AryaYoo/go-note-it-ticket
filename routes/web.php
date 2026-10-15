@@ -11,7 +11,7 @@ Route::get('/', function () {
         $user = auth()->user();
         if ($user->isSuperAdmin()) return redirect()->route('superadmin.dashboard');
         if ($user->isManager())    return redirect()->route('manager.dashboard');
-        return redirect()->route('dashboard');
+        return redirect()->route('tickets.index');
     }
     return redirect()->route('login');
 });
@@ -46,6 +46,29 @@ Route::middleware('auth')->group(function () {
     Route::delete('/documentation/conversations/{id}', [\App\Http\Controllers\DocumentationController::class, 'destroyConversation'])->name('documentation.conversations.destroy');
     Route::delete('/documentation/conversations', [\App\Http\Controllers\DocumentationController::class, 'clearAllConversations'])->name('documentation.conversations.clear-all');
 
+    // Pengecekan Harian
+    Route::get('/daily-check', [\App\Http\Controllers\DailyCheckController::class, 'index'])->name('daily-check.index');
+    Route::post('/daily-check/save-items', [\App\Http\Controllers\DailyCheckController::class, 'saveItems'])->name('daily-check.save-items');
+    Route::post('/daily-check/items/{item}/resolve', [\App\Http\Controllers\DailyCheckController::class, 'resolveItem'])->name('daily-check.resolve-item');
+    Route::post('/daily-check/create-ticket', [\App\Http\Controllers\DailyCheckController::class, 'createTicketFromItems'])->name('daily-check.create-ticket');
+
+    // Master Data
+    Route::prefix('master')->name('master.')->group(function () {
+        // Toko
+        Route::get('/stores', [\App\Http\Controllers\MasterDataController::class, 'storesIndex'])->name('stores');
+        Route::post('/stores', [\App\Http\Controllers\MasterDataController::class, 'storeStore'])->name('stores.store');
+        Route::put('/stores/{store}', [\App\Http\Controllers\MasterDataController::class, 'storeUpdate'])->name('stores.update');
+        Route::delete('/stores/{store}', [\App\Http\Controllers\MasterDataController::class, 'storeDestroy'])->name('stores.destroy');
+        Route::post('/stores/import-csv', [\App\Http\Controllers\MasterDataController::class, 'storeImportCsv'])->name('stores.import-csv');
+
+        // Device
+        Route::get('/devices', [\App\Http\Controllers\MasterDataController::class, 'devicesIndex'])->name('devices');
+        Route::post('/devices', [\App\Http\Controllers\MasterDataController::class, 'deviceStore'])->name('devices.store');
+        Route::put('/devices/{device}', [\App\Http\Controllers\MasterDataController::class, 'deviceUpdate'])->name('devices.update');
+        Route::delete('/devices/{device}', [\App\Http\Controllers\MasterDataController::class, 'deviceDestroy'])->name('devices.destroy');
+        Route::post('/devices/import-csv', [\App\Http\Controllers\MasterDataController::class, 'deviceImportCsv'])->name('devices.import-csv');
+    });
+
     // Super Admin Routes
     Route::middleware('role:superadmin')->prefix('superadmin')->name('superadmin.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\SuperAdminController::class, 'dashboard'])->name('dashboard');
@@ -55,6 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/companies', [\App\Http\Controllers\SuperAdminController::class, 'storeCompany'])->name('companies.store');
         Route::put('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'updateCompany'])->name('companies.update');
         Route::delete('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'destroyCompany'])->name('companies.destroy');
+        Route::post('/gemini/test-connection', [\App\Http\Controllers\SuperAdminController::class, 'testGeminiConnection'])->name('gemini.test');
 
         // Managers
         Route::get('/managers', [\App\Http\Controllers\SuperAdminController::class, 'managers'])->name('managers');

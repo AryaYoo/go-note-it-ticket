@@ -62,7 +62,7 @@
                 <label class="form-label">Kategori Kendala</label>
                 <select name="kategori" class="form-select">
                     <option value="">— Pilih —</option>
-                    @foreach(['POS','Akun','Device','Lainnya'] as $k)
+                    @foreach(['POS','Akun','Device','Laptop','CCTV','Lainnya'] as $k)
                     <option value="{{ $k }}" {{ $ticket->kategori === $k ? 'selected' : '' }}>{{ $k }}</option>
                     @endforeach
                 </select>

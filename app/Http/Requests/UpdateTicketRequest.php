@@ -15,7 +15,7 @@ class UpdateTicketRequest extends FormRequest
             'tanggal_kejadian'    => 'required|date',
             'nama_pelapor'        => 'required|string|max:150',
             'divisi_toko'         => 'required|string|max:150',
-            'kategori'            => 'nullable|in:POS,Akun,Device,Lainnya',
+            'kategori'            => 'nullable|in:POS,Akun,Device,Laptop,CCTV,Email,Lainnya',
             'prioritas'           => 'nullable|in:Low,Medium,High',
             'deskripsi_kendala'   => 'nullable|string',
             'dampak_operasional'  => 'nullable|string',

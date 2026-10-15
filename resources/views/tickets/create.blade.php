@@ -52,6 +52,25 @@
         </button>
     </div>
 
+@if(!empty($prefill['from_check']))
+    <input type="hidden" name="from_check" value="1">
+    <input type="hidden" name="_item_ids" value="{{ $prefill['item_ids'] ?? '' }}">
+    <input type="hidden" name="store_id" value="{{ $prefill['store_id'] ?? '' }}">
+    <input type="hidden" name="source" value="preventive">
+    <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <div>
+                <strong style="color:#1E40AF; font-size:13.5px;">Tiket dari Pengecekan Harian: {{ $prefill['divisi_toko'] ?? '' }}</strong>
+                <p style="margin:2px 0 0; font-size:12px; color:#3B82F6;">Informasi toko &amp; rincian perangkat offline telah terisi otomatis.</p>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="completedSteps.add(1); completedSteps.add(2); showStep(3);">
+            Lompat ke Langkah 3 (Detail) →
+        </button>
+    </div>
+@endif
+
     <div class="form-section">
         <div class="form-section-header blue">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
@@ -67,19 +86,19 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tanggal Kejadian <span class="required">*</span></label>
-                    <input type="date" name="tanggal_kejadian" id="tanggal_kejadian" class="form-input" value="{{ date('Y-m-d') }}" required>
+                    <input type="date" name="tanggal_kejadian" id="tanggal_kejadian" class="form-input" value="{{ $prefill['tanggal_kejadian'] ?? date('Y-m-d') }}" required>
                     <div class="form-error" id="err-tanggal_kejadian"></div>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Nama Pelapor <span class="required">*</span></label>
-                    <input type="text" name="nama_pelapor" id="nama_pelapor" class="form-input" placeholder="Contoh: Budi Santoso / Kepala Toko" required>
+                    <input type="text" name="nama_pelapor" id="nama_pelapor" class="form-input" value="{{ $prefill['nama_pelapor'] ?? ($user->name ?? '') }}" placeholder="Contoh: Budi Santoso / Kepala Toko" required>
                     <div class="form-error" id="err-nama_pelapor"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Divisi / Cabang Toko <span class="required">*</span></label>
-                    <input type="text" name="divisi_toko" id="divisi_toko" class="form-input" placeholder="Contoh: Cabang Sudirman / Kasir 1" required>
+                    <input type="text" name="divisi_toko" id="divisi_toko" class="form-input" value="{{ $prefill['divisi_toko'] ?? '' }}" placeholder="Contoh: Cabang Sudirman / Kasir 1" required>
                     <div class="form-error" id="err-divisi_toko"></div>
                 </div>
             </div>
@@ -168,8 +187,8 @@
                     <label class="form-label">Kategori Kendala</label>
                     <select name="kategori" id="f-kategori" class="form-select">
                         <option value="">— Pilih Kategori —</option>
-                        @foreach(['POS','Akun','Device','Lainnya'] as $k)
-                        <option value="{{ $k }}">{{ $k }}</option>
+                        @foreach(['POS','Akun','Device','Laptop','CCTV','Lainnya'] as $k)
+                        <option value="{{ $k }}" {{ ($prefill['kategori'] ?? '') === $k ? 'selected' : '' }}>{{ $k }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -185,7 +204,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Deskripsi Kendala</label>
-                <textarea name="deskripsi_kendala" id="f-deskripsi_kendala" class="form-textarea" rows="3" placeholder="Rangkuman kendala dari percakapan atau input manual..."></textarea>
+                <textarea name="deskripsi_kendala" id="f-deskripsi_kendala" class="form-textarea" rows="4" placeholder="Rangkuman kendala dari percakapan atau input manual...">{{ $prefill['deskripsi_kendala'] ?? '' }}</textarea>
             </div>
             <div class="form-group">
                 <label class="form-label">Dampak Operasional</label>

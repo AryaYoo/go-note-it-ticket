@@ -10,6 +10,7 @@ class GeminiService
 {
     private string $apiKey;
     private string $model;
+    private ?\App\Models\Company $company = null;
 
     public function __construct()
     {
@@ -17,16 +18,45 @@ class GeminiService
         $this->model  = config('services.gemini.tiket.model', 'gemini-2.0-flash');
     }
 
+    public function forCompany(?\App\Models\Company $company): self
+    {
+        $clone = clone $this;
+        $clone->company = $company;
+        return $clone;
+    }
+
+    public function setCompany(?\App\Models\Company $company): self
+    {
+        $this->company = $company;
+        return $this;
+    }
+
+    private function getResolvedApiKey(): string
+    {
+        $company = $this->company ?? auth()->user()?->company;
+        $key = GeminiKeyService::getKeyForCompany($company, 'tiket');
+        return !empty($key) ? $key : ($this->apiKey ?: config('services.gemini.tiket.api_key', ''));
+    }
+
+    private function getResolvedModel(): string
+    {
+        $company = $this->company ?? auth()->user()?->company;
+        return GeminiKeyService::getModelForCompany($company, 'tiket');
+    }
+
     /**
      * Eksekusi request ke Gemini API.
      */
     private function execute(array $payload, int $timeout = 45): array
     {
-        if (empty($this->apiKey)) {
-            throw new \RuntimeException('GEMINI_API_KEY_TIKET belum dikonfigurasi di file .env.');
+        $apiKey = $this->getResolvedApiKey();
+        if (empty($apiKey)) {
+            $companyName = (auth()->user()?->company?->name) ? ' untuk perusahaan ' . auth()->user()->company->name : '';
+            throw new \RuntimeException("API Key Gemini Tiket{$companyName} belum dikonfigurasi di file .env.");
         }
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+        $model = $this->getResolvedModel();
+        $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
         $response = Http::timeout($timeout)->post($url, $payload);
 
@@ -79,7 +109,7 @@ Kamu adalah asisten IT Helpdesk. {$keteranganGambar} Analisis seluruh gambar sec
 Ekstrak informasi dan kembalikan HANYA dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks tambahan apapun):
 
 {
-  "kategori": "<salah satu: POS | Akun | Device | Lainnya>",
+  "kategori": "<salah satu: POS | Akun | Device | Laptop | CCTV | Lainnya>",
   "prioritas": "<salah satu: Low | Medium | High>",
   "deskripsi_kendala": "<ringkasan singkat kendala yang dilaporkan>",
   "dampak_operasional": "<dampak nyata terhadap operasional toko>",
@@ -98,7 +128,9 @@ Panduan penentuan prioritas:
 Panduan kategori:
 - POS: masalah pada sistem kasir / Point of Sale
 - Akun: masalah login, password, hak akses
-- Device: masalah hardware (komputer, printer, scanner, dll)
+- Device: masalah hardware umum (komputer PC, printer, scanner, dll)
+- Laptop: masalah pada unit laptop atau notebook
+- CCTV: masalah pada kamera pengawas CCTV, DVR/NVR, atau monitoring video
 - Lainnya: masalah jaringan, internet, atau lainnya
 
 Jika informasi tidak cukup untuk menentukan suatu field, gunakan nilai terbaik yang dapat kamu simpulkan dari konteks.
@@ -232,7 +264,7 @@ PROMPT;
     public static function getUsageStats(): array
     {
         $today  = now()->toDateString();
-        $apiKey = config('services.gemini.tiket.api_key', '');
+        $apiKey = GeminiKeyService::getKeyForCompany(auth()->user()?->company, 'tiket');
         $hasKey = !empty(trim($apiKey));
 
         $dailyLimit   = 1500; // 1500 request/hari (Gemini Free Tier)

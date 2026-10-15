@@ -10,6 +10,21 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $superadminEmail    = env('SUPERADMIN_EMAIL', 'superadmin@system.local');
+        $superadminPassword = env('SUPERADMIN_PASSWORD', 'admin123');
+
+        User::updateOrCreate(
+            ['role' => 'superadmin'],
+            [
+                'name'       => 'Super Admin',
+                'email'      => $superadminEmail,
+                'password'   => Hash::make($superadminPassword),
+                'role'       => 'superadmin',
+                'company_id' => null,
+                'divisi'     => null,
+            ]
+        );
+
         User::updateOrCreate(
             ['email' => 'it'],
             [

@@ -152,7 +152,7 @@
 <div class="sa-page-header">
     <div>
         <h1 class="sa-page-title">Manajemen Perusahaan</h1>
-        <div class="sa-page-sub">Daftarkan perusahaan baru dan pantau aktivitasnya.</div>
+        <div class="sa-page-sub">Daftarkan perusahaan baru, konfigurasikan API Key AI, dan pantau aktivitasnya.</div>
     </div>
     <button onclick="document.getElementById('addCompanyModal').classList.add('open')" class="btn-sa-primary">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -160,6 +160,18 @@
         </svg>
         Tambah Perusahaan
     </button>
+</div>
+
+{{-- Callout panduan API Key dinamis dari .env --}}
+<div style="background: linear-gradient(135deg, #FAF5FF, #F3E8FF); border: 1px solid #E9D5FF; border-radius: 12px; padding: 14px 18px; margin-bottom: 22px; display: flex; align-items: flex-start; gap: 12px;">
+    <div style="background: #7C3AED; color: #fff; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px;">
+        💡
+    </div>
+    <div style="font-size: 12.5px; color: #4B5563; line-height: 1.5;">
+        <span style="font-weight: 700; color: #581C87;">Manajemen Multi-API Key Gemini dari .env:</span>
+        Setiap perusahaan dapat memilih 2 API Key terpisah untuk <strong>Tiket (Analisis Gambar)</strong> dan <strong>Dokumentasi (Chat AI)</strong>.
+        Jika Anda menambahkan variabel API Key baru di file <code style="background:#fff; padding:2px 6px; border-radius:4px; color:#7C3AED; font-weight:600; border:1px solid #DDD6FE;">.env</code> (misalnya: <code style="background:#fff; padding:2px 6px; border-radius:4px; color:#7C3AED; font-weight:600; border:1px solid #DDD6FE;">GEMINI_API_KEY_CABANG_A=AIza...</code>), opsi tersebut akan <strong>otomatis langsung muncul</strong> di dropdown tanpa perlu mengubah kodingan.
+    </div>
 </div>
 
 {{-- Company cards --}}
@@ -194,8 +206,30 @@
             </div>
         </div>
 
+        {{-- Indikator Gemini AI API Key --}}
+        <div style="margin-bottom:14px; padding:10px 12px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; font-size:11.5px;">
+            <div style="font-weight:700; color:#475569; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Gemini AI API Keys (.env)
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span style="color:#64748B;">Tiket:</span>
+                    <span style="background:#EEF2FF; color:#4338CA; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #C7D2FE;" title="{{ $company->gemini_api_key_tiket ?: 'GEMINI_API_KEY_TIKET (Default)' }}">
+                        {{ $company->gemini_api_key_tiket ?: 'Default (TIKET)' }}
+                    </span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span style="color:#64748B;">Dokumentasi:</span>
+                    <span style="background:#F0FDF4; color:#15803D; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #BBF7D0;" title="{{ $company->gemini_api_key_documentation ?: 'GEMINI_API_KEY_DOCUMENTATION (Default)' }}">
+                        {{ $company->gemini_api_key_documentation ?: 'Default (DOC)' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <div class="cc-actions">
-            <button onclick="openEditCompany({{ $company->id }}, '{{ addslashes($company->name) }}', '{{ $company->email }}', {{ $company->is_active ? 'true' : 'false' }})"
+            <button onclick="openEditCompany({{ $company->id }}, '{{ addslashes($company->name) }}', '{{ $company->email }}', {{ $company->is_active ? 'true' : 'false' }}, '{{ $company->gemini_api_key_tiket }}', '{{ $company->gemini_api_key_documentation }}')"
                 class="cc-btn">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -251,7 +285,7 @@
             </div>
             <div class="modal-title">Tambah Perusahaan Baru</div>
         </div>
-        <div class="modal-sub">Isi data perusahaan dan akun manager pertama yang akan mengelolanya.</div>
+        <div class="modal-sub">Isi data perusahaan, pilih API Key AI, dan akun manager pertama.</div>
 
         <form method="POST" action="{{ route('superadmin.companies.store') }}">
             @csrf
@@ -265,6 +299,35 @@
             <div class="form-group">
                 <label class="form-label">Email Perusahaan</label>
                 <input type="email" name="email" class="form-input" placeholder="info@perusahaan.com">
+            </div>
+
+            <hr class="modal-divider">
+            <div class="form-section">Konfigurasi Gemini AI (API Key .env)</div>
+
+            <div class="form-group">
+                <label class="form-label">API Key untuk Tiket (Analisis WhatsApp)</label>
+                <select name="gemini_api_key_tiket" class="form-input">
+                    <option value="">-- Gunakan Bawaan (Default: GEMINI_API_KEY_TIKET) --</option>
+                    @foreach($envKeys as $item)
+                        <option value="{{ $item['key'] }}">{{ $item['label'] }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">
+                    Opsi diambil otomatis dari variabel di file <code>.env</code>.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">API Key untuk Dokumentasi (Chat AI)</label>
+                <select name="gemini_api_key_documentation" class="form-input">
+                    <option value="">-- Gunakan Bawaan (Default: GEMINI_API_KEY_DOCUMENTATION) --</option>
+                    @foreach($envKeys as $item)
+                        <option value="{{ $item['key'] }}">{{ $item['label'] }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">
+                    Opsi diambil otomatis dari variabel di file <code>.env</code>.
+                </div>
             </div>
 
             <hr class="modal-divider">
@@ -308,9 +371,12 @@
             </div>
             <div class="modal-title">Edit Perusahaan</div>
         </div>
-        <div class="modal-sub">Perbarui data perusahaan.</div>
+        <div class="modal-sub">Perbarui data perusahaan dan konfigurasi API Key AI.</div>
         <form id="editCompanyForm" method="POST">
             @csrf @method('PUT')
+            
+            <div class="form-section">Data Perusahaan</div>
+
             <div class="form-group">
                 <label class="form-label">Nama Perusahaan <span style="color:#EF4444">*</span></label>
                 <input type="text" id="editCompanyName" name="name" class="form-input" required>
@@ -326,6 +392,36 @@
                     <option value="0">Nonaktif</option>
                 </select>
             </div>
+
+            <hr class="modal-divider">
+            <div class="form-section">Konfigurasi Gemini AI (API Key .env)</div>
+
+            <div class="form-group">
+                <label class="form-label">API Key untuk Tiket (Analisis WhatsApp)</label>
+                <select name="gemini_api_key_tiket" id="editCompanyKeyTiket" class="form-input">
+                    <option value="">-- Gunakan Bawaan (Default: GEMINI_API_KEY_TIKET) --</option>
+                    @foreach($envKeys as $item)
+                        <option value="{{ $item['key'] }}">{{ $item['label'] }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">
+                    Pilih variabel API Key dari <code>.env</code> untuk analisis kendala & gambar tiket perusahaan ini.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">API Key untuk Dokumentasi (Chat AI)</label>
+                <select name="gemini_api_key_documentation" id="editCompanyKeyDoc" class="form-input">
+                    <option value="">-- Gunakan Bawaan (Default: GEMINI_API_KEY_DOCUMENTATION) --</option>
+                    @foreach($envKeys as $item)
+                        <option value="{{ $item['key'] }}">{{ $item['label'] }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">
+                    Pilih variabel API Key dari <code>.env</code> untuk pencarian & chat asisten dokumentasi perusahaan ini.
+                </div>
+            </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="document.getElementById('editCompanyModal').classList.remove('open')">Batal</button>
                 <button type="submit" class="btn-primary-sa">
@@ -343,11 +439,13 @@
 
 @push('scripts')
 <script>
-function openEditCompany(id, name, email, isActive) {
+function openEditCompany(id, name, email, isActive, keyTiket, keyDoc) {
     document.getElementById('editCompanyForm').action = `/superadmin/companies/${id}`;
     document.getElementById('editCompanyName').value  = name;
     document.getElementById('editCompanyEmail').value = email || '';
     document.getElementById('editCompanyStatus').value = isActive ? '1' : '0';
+    document.getElementById('editCompanyKeyTiket').value = keyTiket || '';
+    document.getElementById('editCompanyKeyDoc').value = keyDoc || '';
     document.getElementById('editCompanyModal').classList.add('open');
 }
 

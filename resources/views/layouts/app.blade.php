@@ -18,7 +18,14 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
 
-        <a href="{{ route('dashboard') }}" class="mobile-brand">
+        @php
+            $brandRoute = route('tickets.index');
+            if (Auth::check()) {
+                if (Auth::user()->isSuperAdmin()) $brandRoute = route('superadmin.dashboard');
+                elseif (Auth::user()->isManager()) $brandRoute = route('manager.dashboard');
+            }
+        @endphp
+        <a href="{{ $brandRoute }}" class="mobile-brand">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             <span class="mobile-brand-title">Go-Note</span>
         </a>
@@ -48,13 +55,22 @@
 
         <nav class="sidebar-nav">
             @if(Auth::check() && !Auth::user()->isManager() && !Auth::user()->isSuperAdmin())
-                <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" title="Home">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    <span>Home</span>
-                </a>
                 <a href="{{ route('tickets.index') }}" class="nav-item {{ request()->routeIs('tickets.*') ? 'active' : '' }}" title="Tiket">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
                     <span>Tiket</span>
+                </a>
+                <a href="{{ route('daily-check.index') }}" class="nav-item {{ request()->routeIs('daily-check.*') ? 'active' : '' }}" title="Pengecekan Harian">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Pengecekan Harian</span>
+                </a>
+                <div class="sidebar-section-label" style="padding: 6px 16px 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted);">Master Data</div>
+                <a href="{{ route('master.stores') }}" class="nav-item {{ request()->routeIs('master.stores*') ? 'active' : '' }}" title="Master Toko">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+                    <span>Toko</span>
+                </a>
+                <a href="{{ route('master.devices') }}" class="nav-item {{ request()->routeIs('master.devices*') ? 'active' : '' }}" title="Master Perangkat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <span>Perangkat</span>
                 </a>
                 <a href="{{ route('documentation') }}" class="nav-item {{ request()->routeIs('documentation') ? 'active' : '' }}" title="Dokumentasi">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="13" y2="11"/></svg>
@@ -118,6 +134,19 @@
                 <a href="{{ route('tickets.index') }}" class="nav-item {{ request()->routeIs('tickets.*') ? 'active' : '' }}" title="Tiket">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
                     <span>Tiket</span>
+                </a>
+                <a href="{{ route('daily-check.index') }}" class="nav-item {{ request()->routeIs('daily-check.*') ? 'active' : '' }}" title="Pengecekan Harian">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Pengecekan Harian</span>
+                </a>
+                <div class="sidebar-section-label" style="padding: 6px 16px 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted);">Master Data</div>
+                <a href="{{ route('master.stores') }}" class="nav-item {{ request()->routeIs('master.stores*') ? 'active' : '' }}" title="Master Toko">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+                    <span>Toko</span>
+                </a>
+                <a href="{{ route('master.devices') }}" class="nav-item {{ request()->routeIs('master.devices*') ? 'active' : '' }}" title="Master Perangkat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <span>Perangkat</span>
                 </a>
                 <a href="{{ route('documentation') }}" class="nav-item {{ request()->routeIs('documentation*') ? 'active' : '' }}" title="Dokumentasi">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="13" y2="11"/></svg>

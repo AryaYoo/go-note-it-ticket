@@ -12,6 +12,10 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        if ($user->isStaff() || (!$user->isManager() && !$user->isSuperAdmin())) {
+            return redirect()->route('tickets.index');
+        }
+
         $stats = [
             'total'    => Ticket::count(),
             'open'     => Ticket::where('status', 'Open')->count(),

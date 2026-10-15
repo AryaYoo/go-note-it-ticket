@@ -13,6 +13,10 @@ class Company extends Model
         'name',
         'slug',
         'email',
+        'gemini_api_key_tiket',
+        'gemini_model_tiket',
+        'gemini_api_key_documentation',
+        'gemini_model_documentation',
         'is_active',
     ];
 

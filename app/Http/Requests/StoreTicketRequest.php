@@ -11,22 +11,26 @@ class StoreTicketRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nomor_tiket'         => 'required|string|max:30|regex:/^IT-\d{8}-\d{3}$/',
-            'tanggal_kejadian'    => 'required|date',
-            'nama_pelapor'        => 'required|string|max:150',
-            'divisi_toko'         => 'required|string|max:150',
-            'kategori'            => 'nullable|in:POS,Akun,Device,Lainnya',
-            'prioritas'           => 'nullable|in:Low,Medium,High',
-            'deskripsi_kendala'   => 'nullable|string',
-            'dampak_operasional'  => 'nullable|string',
-            'lampiran_gambar'     => 'nullable|array|max:3',
-            'lampiran_gambar.*'   => 'image|mimes:jpg,jpeg,png,webp|max:10240',
-            'pic'                 => 'nullable|string|max:150',
-            'status'              => 'required|in:Open,Closed,Eskalasi',
-            'tindakan_dilakukan'  => 'nullable|string',
-            'tanggal_penyelesaian' => 'nullable|date',
-            'solusi_diberikan'    => 'nullable|string',
-            'root_cause'          => 'nullable|string',
+            'nomor_tiket'           => 'required|string|max:30|regex:/^IT-\d{8}-\d{3}$/',
+            'tanggal_kejadian'      => 'required|date',
+            'nama_pelapor'          => 'required|string|max:150',
+            'divisi_toko'           => 'required|string|max:150',
+            'kategori'              => 'nullable|in:POS,Akun,Device,Laptop,CCTV,Email,Lainnya',
+            'prioritas'             => 'nullable|in:Low,Medium,High',
+            'deskripsi_kendala'     => 'nullable|string',
+            'dampak_operasional'    => 'nullable|string',
+            'lampiran_gambar'       => 'nullable|array|max:3',
+            'lampiran_gambar.*'     => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'pic'                   => 'nullable|string|max:150',
+            'status'                => 'required|in:Open,Closed,Eskalasi',
+            'tindakan_dilakukan'    => 'nullable|string',
+            'tanggal_penyelesaian'  => 'nullable|date',
+            'solusi_diberikan'      => 'nullable|string',
+            'root_cause'            => 'nullable|string',
+            'source'                => 'nullable|string|max:30',
+            'store_id'              => 'nullable|exists:stores,id',
+            'daily_check_item_id'   => 'nullable|exists:daily_check_items,id',
+            '_item_ids'             => 'nullable|string', // comma-separated item ids dari daily check
         ];
     }
 

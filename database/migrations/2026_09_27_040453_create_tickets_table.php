@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('divisi_toko', 150);
 
             // Detail Kendala (Gemini auto-fill)
-            $table->enum('kategori', ['POS', 'Akun', 'Device', 'Lainnya'])->nullable();
+            $table->enum('kategori', ['POS', 'Akun', 'Device', 'Laptop', 'CCTV', 'Lainnya'])->nullable();
             $table->enum('prioritas', ['Low', 'Medium', 'High'])->nullable();
             $table->text('deskripsi_kendala')->nullable();
             $table->text('dampak_operasional')->nullable();

@@ -39,6 +39,9 @@ class Ticket extends Model
         'solusi_diberikan',
         'root_cause',
         'user_id',
+        'source',
+        'store_id',
+        'daily_check_item_id',
     ];
 
     protected $casts = [
@@ -56,6 +59,26 @@ class Ticket extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    public function dailyCheckItem()
+    {
+        return $this->belongsTo(DailyCheckItem::class);
+    }
+
+    public function devices()
+    {
+        return $this->belongsToMany(Device::class, 'ticket_devices');
+    }
+
+    public function isPreventive(): bool
+    {
+        return $this->source === 'preventive';
     }
 
     // Scopes filter

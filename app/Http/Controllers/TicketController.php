@@ -33,7 +33,7 @@ class TicketController extends Controller
         return view('tickets.index', compact('tickets'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
         $today   = now();
@@ -41,7 +41,21 @@ class TicketController extends Controller
         $lastNum = Ticket::where('nomor_tiket', 'like', $prefix . '%')->count() + 1;
         $suggestNomor = $prefix . str_pad($lastNum, 3, '0', STR_PAD_LEFT);
 
-        return view('tickets.create', compact('user', 'suggestNomor'));
+        // Pre-fill dari pengecekan harian
+        $prefill = [];
+        if ($request->boolean('from_check')) {
+            $prefill = [
+                'from_check'        => true,
+                'item_ids'          => $request->input('item_ids', ''),
+                'tanggal_kejadian'  => $request->input('tanggal_kejadian', date('Y-m-d')),
+                'divisi_toko'       => $request->input('divisi_toko', ''),
+                'store_id'          => $request->input('store_id', ''),
+                'deskripsi_kendala' => $request->input('deskripsi_kendala', ''),
+                'kategori'          => $request->input('kategori', ''),
+            ];
+        }
+
+        return view('tickets.create', compact('user', 'suggestNomor', 'prefill'));
     }
 
     /**
@@ -101,6 +115,11 @@ class TicketController extends Controller
             $nextNum = $lastNum + 1;
             $data['nomor_tiket'] = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 
+            // Tandai sumber preventive jika dari pengecekan harian
+            if ($request->filled('_item_ids')) {
+                $data['source']  = 'preventive';
+            }
+
             // Simpan hingga 3 gambar menggunakan nomor_tiket final
             if ($request->hasFile('lampiran_gambar')) {
                 $companyId = $data['company_id'] ?? Auth::user()->company_id ?? 'shared';
@@ -126,6 +145,14 @@ class TicketController extends Controller
                 'action'      => 'created',
                 'description' => 'Tiket dibuat dengan status ' . $createdTicket->status . ' dan prioritas ' . ($createdTicket->prioritas ?? '-'),
             ]);
+
+            // Tandai item pengecekan sebagai ticket_created jika dari daily check
+            if ($request->filled('_item_ids')) {
+                $itemIds = array_filter(array_map('intval', explode(',', $request->input('_item_ids'))));
+                if (!empty($itemIds)) {
+                    \App\Http\Controllers\DailyCheckController::markItemsAsTicketed($itemIds, $createdTicket->id);
+                }
+            }
 
             return $createdTicket;
         });
