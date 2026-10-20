@@ -56,23 +56,32 @@ return new class extends Migration
                 continue;
             }
 
+            $parseCustomDate = function ($raw) {
+                if (!$raw) return null;
+                if (is_numeric($raw)) {
+                    return Date::excelToDateTimeObject($raw)->format('Y-m-d');
+                }
+                $str = trim((string)$raw);
+                $clean = str_replace(['/', '.'], '-', $str);
+                // Cek format d-m-y atau d-m-Y (contoh: 12/10/26 atau 13/10/2026)
+                if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/', $clean, $m)) {
+                    $d = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+                    $mth = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+                    $yr = $m[3];
+                    if (strlen($yr) === 2) {
+                        $yr = '20' . $yr;
+                    }
+                    return "{$yr}-{$mth}-{$d}";
+                }
+                $time = strtotime($str);
+                return $time ? date('Y-m-d', $time) : null;
+            };
+
             // Parsing Tanggal Kejadian (Kolom C)
-            $rawC = $sheet->getCell('C' . $r)->getValue();
-            $tglKejadian = null;
-            if (is_numeric($rawC)) {
-                $tglKejadian = Date::excelToDateTimeObject($rawC)->format('Y-m-d');
-            } elseif ($rawC) {
-                $tglKejadian = date('Y-m-d', strtotime($rawC));
-            }
+            $tglKejadian = $parseCustomDate($sheet->getCell('C' . $r)->getValue());
 
             // Parsing Tanggal Penyelesaian (Kolom N)
-            $rawN = $sheet->getCell('N' . $r)->getValue();
-            $tglSelesai = null;
-            if (is_numeric($rawN)) {
-                $tglSelesai = Date::excelToDateTimeObject($rawN)->format('Y-m-d');
-            } elseif ($rawN) {
-                $tglSelesai = date('Y-m-d', strtotime($rawN));
-            }
+            $tglSelesai = $parseCustomDate($sheet->getCell('N' . $r)->getValue());
 
             // Normalisasi status
             $statusRaw = trim((string)$sheet->getCell('L' . $r)->getValue());

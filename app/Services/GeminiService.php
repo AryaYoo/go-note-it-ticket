@@ -15,7 +15,7 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = config('services.gemini.tiket.api_key', '');
-        $this->model  = config('services.gemini.tiket.model', 'gemini-2.0-flash');
+        $this->model  = config('services.gemini.tiket.model', 'gemini-flash-lite-latest');
     }
 
     public function forCompany(?\App\Models\Company $company): self

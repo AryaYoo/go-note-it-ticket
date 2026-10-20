@@ -17,7 +17,7 @@ class DocumentationChatService
     public function __construct()
     {
         $this->apiKey = config('services.gemini.dokumentasi.api_key', '');
-        $this->model  = config('services.gemini.dokumentasi.model', 'gemini-2.0-flash');
+        $this->model  = config('services.gemini.dokumentasi.model', 'gemini-flash-lite-latest');
     }
 
     public function forCompany(?\App\Models\Company $company): self

@@ -14,11 +14,33 @@ class GeminiKeyService
     public static function getAvailableModels(): array
     {
         return [
-            'gemini-2.0-flash' => 'Gemini 2.0 Flash (Direkomendasikan - Sangat Cepat & Cerdas)',
-            'gemini-1.5-flash' => 'Gemini 1.5 Flash (Ringan & Cepat)',
-            'gemini-1.5-pro'   => 'Gemini 1.5 Pro (Penalaran Kompleks & Konteks Ekstra Besar)',
-            'gemini-2.5-flash' => 'Gemini 2.5 Flash (Model Generasi Terbaru)',
+            'gemini-flash-lite-latest' => 'Gemini Flash-Lite Latest (Super Cepat, Ringan & Hemat Kuota)',
+            'gemini-3.5-flash-lite'    => 'Gemini 3.5 Flash-Lite (Versi Lite Stabil)',
+            'gemini-3.6-flash'         => 'Gemini 3.6 Flash (Cerdas & Cepat)',
+            'gemini-2.5-flash-lite'    => 'Gemini 2.5 Flash-Lite',
+            'gemini-2.5-flash'         => 'Gemini 2.5 Flash',
+            'gemini-2.0-flash'         => 'Gemini 2.0 Flash',
+            'gemini-1.5-flash'         => 'Gemini 1.5 Flash',
         ];
+    }
+
+    /**
+     * Normalisasi nama model jika pengguna menggunakan varian yang dialihkan
+     * seperti gemini-3.6-flash-lite ke model flash-lite aktif.
+     */
+    public static function normalizeModel(?string $model): string
+    {
+        $model = trim((string)$model);
+        if (empty($model)) {
+            return 'gemini-flash-lite-latest';
+        }
+
+        // Google Generative Language API tidak memiliki 3.6-flash-lite (hanya 3.6-flash atau 3.5-flash-lite / flash-lite-latest)
+        if (str_contains($model, '3.6') && str_contains($model, 'lite')) {
+            return 'gemini-flash-lite-latest';
+        }
+
+        return $model;
     }
 
     /**
@@ -178,8 +200,8 @@ class GeminiKeyService
             return substr($storedVal, 7);
         }
 
-        // Jika raw API Key Google (diawali AIza)
-        if (str_starts_with($storedVal, 'AIza')) {
+        // Jika raw API Key Google (diawali AIza, AQ., atau panjang >= 25)
+        if (str_starts_with($storedVal, 'AIza') || str_starts_with($storedVal, 'AQ.') || strlen($storedVal) >= 25) {
             return $storedVal;
         }
 
@@ -233,8 +255,8 @@ class GeminiKeyService
     public static function getModelForCompany(?Company $company, string $type = 'tiket'): string
     {
         $defaultModel = $type === 'documentation'
-            ? config('services.gemini.dokumentasi.model', env('GEMINI_MODEL_DOCUMENTATION', 'gemini-2.0-flash'))
-            : config('services.gemini.tiket.model', env('GEMINI_MODEL_TIKET', 'gemini-2.0-flash'));
+            ? config('services.gemini.dokumentasi.model', env('GEMINI_MODEL_DOCUMENTATION', 'gemini-flash-lite-latest'))
+            : config('services.gemini.tiket.model', env('GEMINI_MODEL_TIKET', 'gemini-flash-lite-latest'));
 
         if ($company) {
             $chosen = $type === 'documentation'
@@ -242,11 +264,11 @@ class GeminiKeyService
                 : $company->gemini_model_tiket;
 
             if (!empty($chosen) && trim($chosen) !== '') {
-                return trim($chosen);
+                return self::normalizeModel($chosen);
             }
         }
 
-        return !empty($defaultModel) ? $defaultModel : 'gemini-2.0-flash';
+        return self::normalizeModel(!empty($defaultModel) ? $defaultModel : 'gemini-flash-lite-latest');
     }
 
     /**
@@ -278,7 +300,7 @@ class GeminiKeyService
      *
      * @return array{success: bool, message: string}
      */
-    public static function testConnection(string $keyInput, string $model = 'gemini-2.0-flash'): array
+    public static function testConnection(string $keyInput, string $model = 'gemini-flash-lite-latest'): array
     {
         $keyInput = trim($keyInput);
 
@@ -297,7 +319,7 @@ class GeminiKeyService
             ];
         }
 
-        $model = trim($model) ?: 'gemini-2.0-flash';
+        $model = self::normalizeModel(trim($model) ?: 'gemini-flash-lite-latest');
 
         try {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";

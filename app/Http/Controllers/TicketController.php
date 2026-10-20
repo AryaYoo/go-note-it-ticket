@@ -26,7 +26,8 @@ class TicketController extends Controller
             ->filterPrioritas($request->prioritas)
             ->filterTanggal($request->date_from, $request->date_to)
             ->filterSearch($request->search)
-            ->latest();
+            ->orderByDesc('tanggal_kejadian')
+            ->orderByDesc('id');
 
         $tickets = $query->paginate(15)->withQueryString();
 

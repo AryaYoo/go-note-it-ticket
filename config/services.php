@@ -39,12 +39,12 @@ return [
         // --- Tiket: Analisis gambar WhatsApp & rekomendasi ---
         'tiket' => [
             'api_key' => env('GEMINI_API_KEY_TIKET', ''),
-            'model'   => env('GEMINI_MODEL_TIKET', 'gemini-2.0-flash'),
+            'model'   => env('GEMINI_MODEL_TIKET', 'gemini-flash-lite-latest'),
         ],
         // --- Dokumentasi: Chat & pencarian tiket serupa ---
         'dokumentasi' => [
             'api_key' => env('GEMINI_API_KEY_DOCUMENTATION', ''),
-            'model'   => env('GEMINI_MODEL_DOCUMENTATION', 'gemini-2.0-flash'),
+            'model'   => env('GEMINI_MODEL_DOCUMENTATION', 'gemini-flash-lite-latest'),
         ],
     ],
 
