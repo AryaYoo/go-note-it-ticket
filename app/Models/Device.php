@@ -60,4 +60,22 @@ class Device extends Model
         $name = $this->alias ?: $this->type;
         return $this->model ? "{$name} — {$this->model}" : $name;
     }
+
+    /** CSS badge class yang membedakan warna berdasarkan tipe perangkat */
+    public function getTypeBadgeClassAttribute(): string
+    {
+        return match (strtolower(trim($this->type))) {
+            'nvr'     => 'badge-type-nvr',
+            'cctv'    => 'badge-type-cctv',
+            'dvr'     => 'badge-type-dvr',
+            'camera'  => 'badge-type-camera',
+            'router'  => 'badge-type-router',
+            'modem'   => 'badge-type-modem',
+            'pos'     => 'badge-type-pos',
+            'laptop'  => 'badge-type-laptop',
+            'printer' => 'badge-type-printer',
+            'scanner' => 'badge-type-scanner',
+            default   => 'badge-type-default',
+        };
+    }
 }

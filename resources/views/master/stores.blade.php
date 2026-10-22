@@ -60,6 +60,58 @@
     }
     .badge-active   { background: #F0FDF4; color: var(--success); padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
     .badge-inactive { background: #F9FAFB; color: var(--muted);   padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+
+    /* Icon-only action buttons */
+    .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 6px;
+        border: 1px solid var(--border); background: #fff; color: var(--muted);
+        cursor: pointer; transition: all 0.15s ease; position: relative;
+    }
+    .icon-btn:hover { background: #F3F4F6; color: var(--text); border-color: #D1D5DB; }
+    .icon-btn.icon-btn-danger { color: #EF4444; border-color: #FECACA; background: #FFF5F5; }
+    .icon-btn.icon-btn-danger:hover { background: #FEE2E2; border-color: #EF4444; }
+    .icon-btn[title]:hover::after {
+        content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%); background: #111827; color: #fff;
+        font-size: 11px; padding: 3px 7px; border-radius: 4px;
+        white-space: nowrap; pointer-events: none; z-index: 100;
+    }
+
+    /* Status dot indicators (bulat hijau/merah simpel & jelas) */
+    .status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        position: relative;
+        vertical-align: middle;
+        transition: all 0.15s ease;
+    }
+    .status-dot.status-ok {
+        background: #16A34A;
+        box-shadow: 0 0 0 3.5px rgba(22, 163, 74, 0.22);
+    }
+    .status-dot.status-offline {
+        background: #DC2626;
+        box-shadow: 0 0 0 3.5px rgba(220, 38, 38, 0.22);
+    }
+    .status-dot[title]:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: calc(100% + 7px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: #fff;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 100;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
 </style>
 @endpush
 
@@ -70,6 +122,10 @@
         <div class="page-header-sub">{{ $stores->count() }} toko terdaftar</div>
     </div>
     <div class="flex gap-8">
+        <a href="{{ route('master.stores.export') }}" class="btn btn-secondary btn-sm" title="Ekspor data toko ke file CSV">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Ekspor CSV
+        </a>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-import').classList.remove('hidden')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
             Impor CSV
@@ -112,17 +168,21 @@
                     </td>
                     <td>
                         @if($store->is_active)
-                            <span class="badge-active">Aktif</span>
+                            <span class="status-dot status-ok" title="Aktif"></span>
                         @else
-                            <span class="badge-inactive">Non-aktif</span>
+                            <span class="status-dot status-offline" title="Non-aktif"></span>
                         @endif
                     </td>
                     <td style="text-align:right;">
                         <div class="flex gap-8" style="justify-content:flex-end;">
-                            <button class="btn btn-secondary btn-sm" onclick="openEditModal({{ json_encode($store) }})">Edit</button>
+                            <button class="icon-btn" title="Edit Toko" onclick="openEditModal({{ json_encode($store) }})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
                             <form method="POST" action="{{ route('master.stores.destroy', $store) }}" onsubmit="return confirmDelete(event, '{{ $store->name }}')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                                <button type="submit" class="icon-btn icon-btn-danger" title="Hapus Toko">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                </button>
                             </form>
                         </div>
                     </td>
@@ -246,7 +306,7 @@ function openEditModal(store) {
     document.getElementById('edit-branch').value  = store.branch || '';
     document.getElementById('edit-contact').value = store.contact || '';
     document.getElementById('edit-active').value  = store.is_active ? '1' : '0';
-    document.getElementById('form-edit').action   = `/master/stores/${store.id}`;
+    document.getElementById('form-edit').action   = `{{ url('/master/stores') }}/${store.id}`;
     document.getElementById('modal-edit').classList.remove('hidden');
 }
 async function confirmDelete(e, name) {

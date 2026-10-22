@@ -4,6 +4,7 @@
 
 /* --- Google Font Import fallback (handled by layout head) --- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 
 :root {
     --bg:       #FFFFFF;
@@ -422,6 +423,19 @@ body.sidebar-collapsed .main-content {
 .badge-cctv     { background: #F0FDFA; color: #0F766E; }
 .badge-email    { background: #FDF2F8; color: #BE185D; }
 .badge-lainnya  { background: var(--sidebar); color: var(--muted); }
+
+/* Device Type Distinct Badges */
+.badge-type-nvr     { background: #F3E8FF; color: #7E22CE; border: 1px solid #E9D5FF; font-weight: 600; }
+.badge-type-cctv    { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; font-weight: 600; }
+.badge-type-dvr     { background: #EDE9FE; color: #6D28D9; border: 1px solid #DDD6FE; font-weight: 600; }
+.badge-type-camera  { background: #ECFEFF; color: #0E7490; border: 1px solid #BAE6FD; font-weight: 600; }
+.badge-type-router  { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; font-weight: 600; }
+.badge-type-modem   { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; font-weight: 600; }
+.badge-type-pos     { background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; font-weight: 600; }
+.badge-type-laptop  { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; font-weight: 600; }
+.badge-type-printer { background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; font-weight: 600; }
+.badge-type-scanner { background: #F7FEE7; color: #4D7C0F; border: 1px solid #D9F99D; font-weight: 600; }
+.badge-type-default { background: #F3F4F6; color: #4B5563; border: 1px solid #E5E7EB; font-weight: 600; }
 
 /* ============================================================
    COMPONENTS — Cards

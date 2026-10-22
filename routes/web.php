@@ -52,14 +52,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/daily-check/items/{item}/resolve', [\App\Http\Controllers\DailyCheckController::class, 'resolveItem'])->name('daily-check.resolve-item');
     Route::post('/daily-check/create-ticket', [\App\Http\Controllers\DailyCheckController::class, 'createTicketFromItems'])->name('daily-check.create-ticket');
 
-    // Master Data
-    Route::prefix('master')->name('master.')->group(function () {
+    // Master Data (Khusus Manager & Super Admin)
+    Route::middleware('role:manager')->prefix('master')->name('master.')->group(function () {
         // Toko
         Route::get('/stores', [\App\Http\Controllers\MasterDataController::class, 'storesIndex'])->name('stores');
         Route::post('/stores', [\App\Http\Controllers\MasterDataController::class, 'storeStore'])->name('stores.store');
         Route::put('/stores/{store}', [\App\Http\Controllers\MasterDataController::class, 'storeUpdate'])->name('stores.update');
         Route::delete('/stores/{store}', [\App\Http\Controllers\MasterDataController::class, 'storeDestroy'])->name('stores.destroy');
         Route::post('/stores/import-csv', [\App\Http\Controllers\MasterDataController::class, 'storeImportCsv'])->name('stores.import-csv');
+        Route::get('/stores/export-csv', [\App\Http\Controllers\MasterDataController::class, 'storesExportCsv'])->name('stores.export');
 
         // Device
         Route::get('/devices', [\App\Http\Controllers\MasterDataController::class, 'devicesIndex'])->name('devices');
@@ -67,6 +68,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/devices/{device}', [\App\Http\Controllers\MasterDataController::class, 'deviceUpdate'])->name('devices.update');
         Route::delete('/devices/{device}', [\App\Http\Controllers\MasterDataController::class, 'deviceDestroy'])->name('devices.destroy');
         Route::post('/devices/import-csv', [\App\Http\Controllers\MasterDataController::class, 'deviceImportCsv'])->name('devices.import-csv');
+        Route::get('/devices/export-csv', [\App\Http\Controllers\MasterDataController::class, 'devicesExportCsv'])->name('devices.export');
     });
 
     // Super Admin Routes

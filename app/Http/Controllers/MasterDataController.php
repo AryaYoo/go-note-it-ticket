@@ -64,27 +64,78 @@ class MasterDataController extends Controller
             'csv_file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
-        $file    = $request->file('csv_file');
-        $handle  = fopen($file->getRealPath(), 'r');
-        $header  = fgetcsv($handle); // skip header row
-        $count   = 0;
+        $file      = $request->file('csv_file');
+        $path      = $file->getRealPath();
+
+        // Deteksi delimiter (koma atau titik-koma)
+        $sampleLine = fgets(fopen($path, 'r'));
+        $delimiter  = (substr_count($sampleLine, ';') > substr_count($sampleLine, ',')) ? ';' : ',';
+
+        $handle    = fopen($path, 'r');
+        $header    = fgetcsv($handle, 0, $delimiter); // skip header row
+        $count     = 0;
         $companyId = Auth::user()->company_id;
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
             if (empty($row[0])) continue;
-            Store::firstOrCreate(
-                ['company_id' => $companyId, 'name' => trim($row[0])],
+
+            $branch  = isset($row[1]) ? trim($row[1]) : '';
+            $contact = isset($row[2]) ? trim($row[2]) : '';
+
+            $store = Store::firstOrCreate(
                 [
-                    'branch'  => trim($row[1] ?? ''),
-                    'contact' => trim($row[2] ?? ''),
+                    'company_id' => $companyId,
+                    'name'       => trim($row[0]),
+                    'branch'     => $branch,
+                ],
+                [
+                    'contact'    => $contact,
                 ]
             );
+
+            if (!$store->wasRecentlyCreated && empty($store->contact) && !empty($contact)) {
+                $store->update(['contact' => $contact]);
+            }
+
             $count++;
         }
         fclose($handle);
 
         return redirect()->route('master.stores')
-            ->with('success', "{$count} toko berhasil diimpor dari CSV.");
+            ->with('success', "{$count} toko berhasil diproses dari CSV.");
+    }
+
+    public function storesExportCsv(Request $request)
+    {
+        $stores = Store::withCount('devices')->orderBy('name')->get();
+        $filename = 'Master_Toko_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        $callback = function () use ($stores) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['name', 'branch', 'contact', 'devices_count', 'is_active']);
+
+            foreach ($stores as $store) {
+                fputcsv($handle, [
+                    $store->name,
+                    $store->branch ?? '',
+                    $store->contact ?? '',
+                    $store->devices_count ?? 0,
+                    $store->is_active ? '1' : '0',
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     // ──────────────────────────── DEVICES ────────────────────────────
@@ -107,12 +158,20 @@ class MasterDataController extends Controller
             'channel_count' => 'nullable|integer|min:0|max:999',
             'camera_count'  => 'nullable|integer|min:0|max:999',
             'modem_notes'   => 'nullable|string',
+            '_search'       => 'nullable|string',
         ]);
+
+        $search = $request->input('_search', $request->input('search'));
+        unset($data['_search']);
 
         $data['company_id'] = Auth::user()->company_id;
         Device::create($data);
 
-        return redirect()->route('master.devices')->with('success', 'Device berhasil ditambahkan.');
+        $redirect = redirect()->route('master.devices');
+        if (!empty($search)) {
+            $redirect = redirect()->route('master.devices', ['search' => $search]);
+        }
+        return $redirect->with('success', 'Device berhasil ditambahkan.');
     }
 
     public function deviceUpdate(Request $request, Device $device)
@@ -127,18 +186,32 @@ class MasterDataController extends Controller
             'camera_count'  => 'nullable|integer|min:0|max:999',
             'modem_notes'   => 'nullable|string',
             'is_active'     => 'nullable|boolean',
+            '_search'       => 'nullable|string',
         ]);
+
+        $search = $request->input('_search', $request->input('search'));
+        unset($data['_search']);
 
         $data['is_active'] = $request->boolean('is_active');
         $device->update($data);
 
-        return redirect()->route('master.devices')->with('success', 'Device berhasil diperbarui.');
+        $redirect = redirect()->route('master.devices');
+        if (!empty($search)) {
+            $redirect = redirect()->route('master.devices', ['search' => $search]);
+        }
+        return $redirect->with('success', 'Device berhasil diperbarui.');
     }
 
-    public function deviceDestroy(Device $device)
+    public function deviceDestroy(Request $request, Device $device)
     {
+        $search = $request->input('_search', $request->input('search'));
         $device->delete();
-        return redirect()->route('master.devices')->with('success', 'Device berhasil dihapus.');
+
+        $redirect = redirect()->route('master.devices');
+        if (!empty($search)) {
+            $redirect = redirect()->route('master.devices', ['search' => $search]);
+        }
+        return $redirect->with('success', 'Device berhasil dihapus.');
     }
 
     public function deviceImportCsv(Request $request)
@@ -148,17 +221,29 @@ class MasterDataController extends Controller
         ]);
 
         $file      = $request->file('csv_file');
-        $handle    = fopen($file->getRealPath(), 'r');
-        $header    = fgetcsv($handle); // skip header
+        $path      = $file->getRealPath();
+
+        // Deteksi delimiter (koma atau titik-koma)
+        $sampleLine = fgets(fopen($path, 'r'));
+        $delimiter  = (substr_count($sampleLine, ';') > substr_count($sampleLine, ',')) ? ';' : ',';
+
+        $handle    = fopen($path, 'r');
+        $header    = fgetcsv($handle, 0, $delimiter); // skip header
         $count     = 0;
         $companyId = Auth::user()->company_id;
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
             if (empty($row[1])) continue; // kolom type wajib ada
 
-            // Kolom CSV: store_name, type, alias, model, serial_number, channel_count, camera_count, modem_notes
+            $storeQuery = trim($row[0] ?? '');
+            // Cocokkan toko berdasarkan nama cabang, nama toko, atau format "Nama (Cabang)"
             $store = Store::where('company_id', $companyId)
-                          ->where('name', trim($row[0] ?? ''))
+                          ->where(function ($q) use ($storeQuery) {
+                              $q->where('branch', $storeQuery)
+                                ->orWhere('name', $storeQuery)
+                                ->orWhereRaw("CONCAT(name, ' (', branch, ')') = ?", [$storeQuery])
+                                ->orWhereRaw("CONCAT(name, ' ', branch) = ?", [$storeQuery]);
+                          })
                           ->first();
             if (!$store) continue;
 
@@ -179,5 +264,53 @@ class MasterDataController extends Controller
 
         return redirect()->route('master.devices')
             ->with('success', "{$count} device berhasil diimpor dari CSV.");
+    }
+
+    public function devicesExportCsv(Request $request)
+    {
+        $devices = Device::with('store')->orderBy('store_id')->orderBy('alias')->get();
+        $filename = 'Master_Perangkat_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        $callback = function () use ($devices) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, [
+                'store_name',
+                'type',
+                'alias',
+                'model',
+                'serial_number',
+                'channel_count',
+                'camera_count',
+                'modem_notes',
+                'is_active',
+            ]);
+
+            foreach ($devices as $dev) {
+                $storeName = $dev->store ? ($dev->store->branch ?: $dev->store->name) : '';
+                fputcsv($handle, [
+                    $storeName,
+                    $dev->type ?? '',
+                    $dev->alias ?? '',
+                    $dev->model ?? '',
+                    $dev->serial_number ?? '',
+                    $dev->channel_count ?? '',
+                    $dev->camera_count ?? '',
+                    $dev->modem_notes ?? '',
+                    $dev->is_active ? '1' : '0',
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -63,15 +63,6 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                     <span>Pengecekan Harian</span>
                 </a>
-                <div class="sidebar-section-label" style="padding: 6px 16px 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted);">Master Data</div>
-                <a href="{{ route('master.stores') }}" class="nav-item {{ request()->routeIs('master.stores*') ? 'active' : '' }}" title="Master Toko">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-                    <span>Toko</span>
-                </a>
-                <a href="{{ route('master.devices') }}" class="nav-item {{ request()->routeIs('master.devices*') ? 'active' : '' }}" title="Master Perangkat">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    <span>Perangkat</span>
-                </a>
                 <a href="{{ route('documentation') }}" class="nav-item {{ request()->routeIs('documentation') ? 'active' : '' }}" title="Dokumentasi">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="13" y2="11"/></svg>
                     <span>Dokumentasi</span>
@@ -103,16 +94,24 @@
 
             @if(Auth::check() && Auth::user()->isManager())
 
-                {{-- Kelompok Menu Khusus Admin (Background Biru Brand) --}}
+                {{-- Kelompok Menu Khusus Manager --}}
                 <div class="sidebar-admin-group">
                     <div class="sidebar-group-header">
-                        <span class="sidebar-group-title">Menu Admin</span>
-                        <span class="sidebar-group-badge">Admin</span>
+                        <span class="sidebar-group-title">Menu Manager</span>
+                        <span class="sidebar-group-badge">Manager</span>
                     </div>
 
                     <a href="{{ route('manager.dashboard') }}" class="nav-item {{ request()->routeIs('manager.dashboard') ? 'active' : '' }}" title="Dashboard">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                         <span>Dashboard</span>
+                    </a>
+                    <a href="{{ route('master.stores') }}" class="nav-item {{ request()->routeIs('master.stores*') ? 'active' : '' }}" title="Master Toko">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+                        <span>Master Toko</span>
+                    </a>
+                    <a href="{{ route('master.devices') }}" class="nav-item {{ request()->routeIs('master.devices*') ? 'active' : '' }}" title="Master Perangkat">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <span>Master Perangkat</span>
                     </a>
                     <a href="{{ route('manager.analysis.index') }}" class="nav-item {{ request()->routeIs('manager.analysis.*') ? 'active' : '' }}" title="Monthly Analysis">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -138,15 +137,6 @@
                 <a href="{{ route('daily-check.index') }}" class="nav-item {{ request()->routeIs('daily-check.*') ? 'active' : '' }}" title="Pengecekan Harian">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                     <span>Pengecekan Harian</span>
-                </a>
-                <div class="sidebar-section-label" style="padding: 6px 16px 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted);">Master Data</div>
-                <a href="{{ route('master.stores') }}" class="nav-item {{ request()->routeIs('master.stores*') ? 'active' : '' }}" title="Master Toko">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-                    <span>Toko</span>
-                </a>
-                <a href="{{ route('master.devices') }}" class="nav-item {{ request()->routeIs('master.devices*') ? 'active' : '' }}" title="Master Perangkat">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    <span>Perangkat</span>
                 </a>
                 <a href="{{ route('documentation') }}" class="nav-item {{ request()->routeIs('documentation*') ? 'active' : '' }}" title="Dokumentasi">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="13" y2="11"/></svg>
@@ -283,6 +273,76 @@ Swal.fire({
     if (mobileMenuToggle) {
         mobileMenuToggle.addEventListener('click', openMobileSidebar);
     }
+
+    // ── Floating Scroll To Top ────────────────────────
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.addEventListener('scroll', function() {
+        const btn = document.getElementById('btn-scroll-top');
+        if (!btn) return;
+        const scrollPos = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        if (scrollPos > 250) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+    }, { passive: true });
 </script>
+
+{{-- Floating Scroll to Top Button --}}
+<button id="btn-scroll-top" class="scroll-top-btn" title="Kembali ke atas" onclick="scrollToTop()" aria-label="Scroll ke atas">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 15l-6-6-6 6"/>
+    </svg>
+</button>
+
+<style>
+    .scroll-top-btn {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #2563EB;
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(16px) scale(0.9);
+        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease, background 0.15s ease, box-shadow 0.15s ease;
+        z-index: 990;
+    }
+    .scroll-top-btn.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+    .scroll-top-btn:hover {
+        background: #1D4ED8;
+        transform: translateY(-3px) scale(1.06);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+    .scroll-top-btn:active {
+        transform: translateY(0) scale(0.95);
+    }
+    @media (max-width: 768px) {
+        .scroll-top-btn {
+            bottom: 20px;
+            right: 20px;
+            width: 38px;
+            height: 38px;
+        }
+    }
+</style>
 </body>
 </html>

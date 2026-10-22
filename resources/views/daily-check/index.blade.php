@@ -46,6 +46,41 @@
     }
     .offline-count-badge.zero { background: #F0FDF4; color: var(--success); border-color: #BBF7D0; }
 
+    /* Status dot indicators (bulat hijau/merah simpel & jelas) */
+    .status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        position: relative;
+        vertical-align: middle;
+        transition: all 0.15s ease;
+    }
+    .status-dot.status-ok {
+        background: #16A34A;
+        box-shadow: 0 0 0 3.5px rgba(22, 163, 74, 0.22);
+    }
+    .status-dot.status-offline {
+        background: #DC2626;
+        box-shadow: 0 0 0 3.5px rgba(220, 38, 38, 0.22);
+    }
+    .status-dot[title]:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: calc(100% + 7px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: #fff;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 100;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
     /* ── Device Row ── */
     .device-list { border-collapse: collapse; width: 100%; font-size: 13px; }
     .device-list th {
@@ -109,13 +144,34 @@
     .pill-fixed   { background: #F0FDF4; color: var(--success); }
     .pill-no_fault { background: #F9FAFB; color: var(--muted); }
     .pill-ticket_created { background: #EFF6FF; color: var(--primary); }
+
+    /* Icon-only action buttons */
+    .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 6px;
+        border: 1px solid var(--border); background: #fff; color: var(--muted);
+        cursor: pointer; transition: all 0.15s ease; position: relative;
+    }
+    .icon-btn:hover { background: #F3F4F6; color: var(--text); border-color: #D1D5DB; }
+    .icon-btn.icon-btn-success { color: #16A34A; border-color: #BBF7D0; background: #F0FDF4; }
+    .icon-btn.icon-btn-success:hover { background: #DCFCE7; border-color: #16A34A; }
+    .icon-btn.icon-btn-danger { color: #EF4444; border-color: #FECACA; background: #FFF5F5; }
+    .icon-btn.icon-btn-danger:hover { background: #FEE2E2; border-color: #EF4444; }
+    .icon-btn.icon-btn-primary { color: var(--primary); border-color: #BFDBFE; background: #EFF6FF; }
+    .icon-btn.icon-btn-primary:hover { background: #DBEAFE; border-color: var(--primary); }
+    .icon-btn[title]:hover::after {
+        content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%); background: #111827; color: #fff;
+        font-size: 11px; padding: 3px 7px; border-radius: 4px;
+        white-space: nowrap; pointer-events: none; z-index: 100;
+    }
 </style>
 @endpush
 
 @section('content')
 
 {{-- Sticky Save Bar --}}
-<div class="check-save-bar">
+<div class="check-save-bar" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
     <div>
         <h1 style="font-size:18px; font-weight:700; margin-bottom:2px;">Pengecekan Harian</h1>
         <div class="check-date-badge">
@@ -123,11 +179,22 @@
             {{ \Carbon\Carbon::parse($today)->translatedFormat('l, d F Y') }}
         </div>
     </div>
-    <div style="display:flex; align-items:center; gap:10px;">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        {{-- Search Input --}}
+        <div class="search-input-wrap" style="min-width:240px; max-width:320px;">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="daily-check-search" class="search-input" placeholder="Cari toko, cabang, perangkat..." autocomplete="off" oninput="filterDailyCheck(this.value)">
+            <button type="button" id="daily-check-search-clear" class="search-clear-btn" style="display:none; background:none; border:none; cursor:pointer;" onclick="clearDailyCheckSearch()" title="Hapus pencarian">✕</button>
+        </div>
+
+        <button type="button" id="btn-reset-daily-search" class="btn btn-ghost btn-sm" style="display:none; align-items:center; gap:5px; border:1px solid var(--border); color:var(--muted);" onclick="clearDailyCheckSearch()" title="Reset pencarian">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.73"/></svg>
+            Reset
+        </button>
+
         <span class="save-status" id="save-status">Siap disimpan</span>
-        <button class="btn btn-primary" id="btn-save-all" onclick="saveAll()">
+        <button class="btn btn-primary" id="btn-save-all" onclick="saveAll()" title="Simpan Semua">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Simpan Semua
         </button>
     </div>
 </div>
@@ -137,11 +204,15 @@
 <div class="empty-state">
     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     <h2>Belum Ada Perangkat Terdaftar</h2>
-    <p>Tambahkan toko dan perangkat di Master Data terlebih dahulu sebelum melakukan pengecekan harian.</p>
-    <div style="display:flex; gap:10px; justify-content:center;">
-        <a href="{{ route('master.stores') }}" class="btn btn-secondary">Kelola Toko</a>
-        <a href="{{ route('master.devices') }}" class="btn btn-primary">Kelola Perangkat</a>
-    </div>
+    @if(Auth::user()->isManager() || Auth::user()->isSuperAdmin())
+        <p>Tambahkan toko dan perangkat di Master Data terlebih dahulu sebelum melakukan pengecekan harian.</p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <a href="{{ route('master.stores') }}" class="btn btn-secondary">Kelola Toko</a>
+            <a href="{{ route('master.devices') }}" class="btn btn-primary">Kelola Perangkat</a>
+        </div>
+    @else
+        <p style="font-size:13px; color:var(--muted); margin-top:8px;">Silakan hubungi Manager untuk mendaftarkan toko dan perangkat.</p>
+    @endif
 </div>
 
 @else
@@ -152,7 +223,7 @@
     $offlineItems = $items->filter(fn($i) => $i->is_offline);
     $offlineCount = $offlineItems->count();
 @endphp
-<div class="store-group" id="store-group-{{ $storeId }}">
+<div class="store-group" id="store-group-{{ $storeId }}" data-store-name="{{ strtolower(($store?->name ?? '') . ' ' . ($store?->branch ?? '')) }}">
     <div class="store-group-header" onclick="toggleGroup({{ $storeId }})">
         <div class="store-group-title">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
@@ -165,11 +236,11 @@
             <span class="offline-count-badge {{ $offlineCount === 0 ? 'zero' : '' }}" id="offline-badge-{{ $storeId }}">
                 {{ $offlineCount === 0 ? '✓ Semua OK' : "{$offlineCount} Offline" }}
             </span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="chevron-{{ $storeId }}" style="transition:transform 200ms;"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="chevron-{{ $storeId }}" style="transition:transform 200ms; transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
     </div>
 
-    <div id="store-body-{{ $storeId }}">
+    <div id="store-body-{{ $storeId }}" style="display:none;">
         <table class="device-list">
             <thead>
                 <tr>
@@ -184,7 +255,7 @@
             <tbody>
             @foreach($items as $item)
             @php $device = $item->device; $isOffline = $item->is_offline; @endphp
-            <tr class="device-row {{ $isOffline ? 'is-offline' : '' }}" id="row-{{ $item->id }}">
+            <tr class="device-row {{ $isOffline ? 'is-offline' : '' }}" id="row-{{ $item->id }}" data-device-search="{{ strtolower(($store?->name ?? '') . ' ' . ($store?->branch ?? '') . ' ' . $device->type . ' ' . ($device->alias ?? '') . ' ' . ($device->model ?? '') . ' ' . ($device->serial_number ?? '')) }}">
                 <td>
                     <input type="checkbox"
                         class="offline-toggle"
@@ -201,7 +272,7 @@
                     <div style="font-size:11px; color:var(--muted);">{{ $device->type }}</div>
                     @endif
                 </td>
-                <td><span class="badge badge-device" style="font-size:11px;">{{ $device->type }}</span></td>
+                <td><span class="badge {{ $device->type_badge_class }}" style="font-size:11px;">{{ $device->type }}</span></td>
                 <td style="font-size:12px; color:var(--muted);">
                     {{ $device->model ?: '—' }}
                     @if($device->serial_number)
@@ -209,9 +280,7 @@
                     @endif
                 </td>
                 <td style="text-align:center;">
-                    <span id="status-badge-{{ $item->id }}" class="badge {{ $isOffline ? 'badge-high' : 'badge-closed' }}">
-                        {{ $isOffline ? 'Offline' : 'OK' }}
-                    </span>
+                    <span id="status-badge-{{ $item->id }}" class="status-dot {{ $isOffline ? 'status-offline' : 'status-ok' }}" title="{{ $isOffline ? 'Offline' : 'OK' }}"></span>
                 </td>
                 <td>
                     @if($item->result)
@@ -259,20 +328,22 @@
                     <div class="result-row {{ $isOffline ? 'visible' : '' }}" id="result-actions-{{ $item->id }}">
                         <span class="result-label">Hasil:</span>
                         @if(!$item->result || $item->result === 'ticket_created')
-                            <button class="btn btn-success btn-sm" onclick="resolveItem({{ $item->id }}, 'fixed')">
-                                ✓ Diperbaiki Cepat
+                            <button class="icon-btn icon-btn-success" title="Diperbaiki Cepat" onclick="resolveItem({{ $item->id }}, 'fixed')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                             </button>
-                            <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border);" onclick="resolveItem({{ $item->id }}, 'no_fault')">
-                                ✗ Bukan Kerusakan
+                            <button class="icon-btn" title="Bukan Kerusakan" style="border:1px solid var(--border);" onclick="resolveItem({{ $item->id }}, 'no_fault')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
-                            <button class="btn btn-primary btn-sm" onclick="addToTicketSelection({{ $item->id }}, {{ $storeId }}, '{{ addslashes($device->alias ?: $device->type) }}')">
-                                🎫 Buat Tiket
+                            <button class="icon-btn icon-btn-primary" title="Buat Tiket" onclick="addToTicketSelection({{ $item->id }}, {{ $storeId }}, '{{ addslashes($device->alias ?: $device->type) }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-4-4z"/><polyline points="15 5 15 9 19 9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
                             </button>
                         @else
                             <span style="font-size:12px; color:var(--muted);">
                                 Sudah ditandai: <strong>{{ $item->resultLabel() }}</strong>
                             </span>
-                            <button class="btn btn-ghost btn-sm" onclick="resolveItem({{ $item->id }}, null)">Reset</button>
+                            <button class="icon-btn" title="Reset Status" onclick="resolveItem({{ $item->id }}, null)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.73"/></svg>
+                            </button>
                         @endif
                     </div>
                 </td>
@@ -283,6 +354,13 @@
     </div>
 </div>
 @endforeach
+
+<div id="no-daily-results" style="display:none; background:#fff; border:1px solid var(--border); border-radius:8px; text-align:center; padding:48px 20px; color:var(--muted); margin-bottom:16px;">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 10px; display:block; opacity:0.4;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <div style="font-weight:600; color:var(--text); margin-bottom:4px;">Tidak ada toko atau perangkat yang cocok</div>
+    <div style="font-size:13px; margin-bottom:14px;">Pencarian untuk "<strong id="daily-searched-term"></strong>" tidak menemukan hasil.</div>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="clearDailyCheckSearch()">Reset Pencarian</button>
+</div>
 
 {{-- Floating action: Create ticket from selection --}}
 <div id="ticket-selection-bar" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:200; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); padding:12px 20px; display:none; align-items:center; gap:14px; min-width:380px;">
@@ -337,7 +415,81 @@ function toggleGroup(storeId) {
     const chevron = document.getElementById('chevron-' + storeId);
     const isHidden = body.style.display === 'none';
     body.style.display = isHidden ? '' : 'none';
-    chevron.style.transform = isHidden ? '' : 'rotate(-90deg)';
+    chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
+
+// ── Search & Filter ───────────────────────────────
+function filterDailyCheck(term) {
+    const raw = term;
+    const q = raw.trim().toLowerCase();
+    const clearBtn = document.getElementById('daily-check-search-clear');
+    const resetBtn = document.getElementById('btn-reset-daily-search');
+    const noResults = document.getElementById('no-daily-results');
+    const groups = document.querySelectorAll('.store-group');
+
+    if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+    if (resetBtn) resetBtn.style.display = q ? 'inline-flex' : 'none';
+
+    let visibleGroupCount = 0;
+
+    groups.forEach(group => {
+        const storeName = group.getAttribute('data-store-name') || '';
+        const storeId = group.id.replace('store-group-', '');
+        const body = document.getElementById('store-body-' + storeId);
+        const chevron = document.getElementById('chevron-' + storeId);
+        const deviceRows = group.querySelectorAll('.device-row');
+
+        if (!q) {
+            // Reset to default (all visible, but dropdowns closed)
+            group.style.display = '';
+            deviceRows.forEach(row => row.style.display = '');
+            if (body) body.style.display = 'none';
+            if (chevron) chevron.style.transform = 'rotate(-90deg)';
+            visibleGroupCount++;
+        } else {
+            const storeMatches = storeName.includes(q);
+            let matchingDeviceCount = 0;
+
+            deviceRows.forEach(row => {
+                const searchData = row.getAttribute('data-device-search') || '';
+                if (storeMatches || searchData.includes(q)) {
+                    row.style.display = '';
+                    matchingDeviceCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if (storeMatches || matchingDeviceCount > 0) {
+                group.style.display = '';
+                // Auto-expand group to reveal matching items
+                if (body) body.style.display = '';
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+                visibleGroupCount++;
+            } else {
+                group.style.display = 'none';
+            }
+        }
+    });
+
+    if (noResults) {
+        if (q && visibleGroupCount === 0) {
+            noResults.style.display = 'block';
+            const termEl = document.getElementById('daily-searched-term');
+            if (termEl) termEl.textContent = raw.trim();
+        } else {
+            noResults.style.display = 'none';
+        }
+    }
+}
+
+function clearDailyCheckSearch() {
+    const input = document.getElementById('daily-check-search');
+    if (input) {
+        input.value = '';
+    }
+    filterDailyCheck('');
+    if (input) input.focus();
 }
 
 // ── Offline toggle ────────────────────────────────
@@ -353,14 +505,16 @@ function toggleOffline(cb) {
         row.classList.add('is-offline');
         detail.classList.add('visible');
         actions.classList.add('visible');
-        badge.className = 'badge badge-high';
-        badge.textContent = 'Offline';
+        badge.className = 'status-dot status-offline';
+        badge.setAttribute('title', 'Offline');
+        badge.innerHTML = '';
     } else {
         row.classList.remove('is-offline');
         detail.classList.remove('visible');
         actions.classList.remove('visible');
-        badge.className = 'badge badge-closed';
-        badge.textContent = 'OK';
+        badge.className = 'status-dot status-ok';
+        badge.setAttribute('title', 'OK');
+        badge.innerHTML = '';
     }
     updateOfflineBadge(storeId);
     markDirty();
@@ -428,7 +582,7 @@ async function saveAll() {
 async function resolveItem(itemId, result) {
     if (!result) {
         // Reset
-        const res = await fetch(`/daily-check/items/${itemId}/resolve`, {
+        const res = await fetch(`{{ url('/daily-check/items') }}/${itemId}/resolve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             body: JSON.stringify({ result: 'fixed', notes: '' }),
@@ -449,7 +603,7 @@ async function resolveItem(itemId, result) {
     });
     if (!confirm.isConfirmed) return;
 
-    const res = await fetch(`/daily-check/items/${itemId}/resolve`, {
+    const res = await fetch(`{{ url('/daily-check/items') }}/${itemId}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
         body: JSON.stringify({ result }),
