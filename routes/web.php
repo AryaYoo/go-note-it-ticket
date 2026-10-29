@@ -28,14 +28,17 @@ Route::middleware('auth')->group(function () {
     // Tickets
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+    Route::get('/tickets/share/text', [TicketController::class, 'shareText'])->name('tickets.share-text');
+    Route::get('/tickets/export/download', [TicketController::class, 'export'])->name('tickets.export');
     Route::post('/tickets/analyze', [TicketController::class, 'analyze'])->name('tickets.analyze');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::get('/tickets/{ticket}/edit', [TicketController::class, 'edit'])->name('tickets.edit');
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+    Route::post('/tickets/{ticket}/analyze-resolution', [TicketController::class, 'analyzeResolution'])->name('tickets.analyze-resolution');
+    Route::post('/tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
     Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
     Route::get('/tickets/{ticket}/image/{index?}', [TicketController::class, 'image'])->name('tickets.image');
-    Route::get('/tickets/export/download', [TicketController::class, 'export'])->name('tickets.export');
 
     // Documentation
     Route::get('/documentation', [\App\Http\Controllers\DocumentationController::class, 'index'])->name('documentation');
@@ -51,6 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/daily-check/save-items', [\App\Http\Controllers\DailyCheckController::class, 'saveItems'])->name('daily-check.save-items');
     Route::post('/daily-check/items/{item}/resolve', [\App\Http\Controllers\DailyCheckController::class, 'resolveItem'])->name('daily-check.resolve-item');
     Route::post('/daily-check/create-ticket', [\App\Http\Controllers\DailyCheckController::class, 'createTicketFromItems'])->name('daily-check.create-ticket');
+    Route::post('/daily-check/batch-create-tickets', [\App\Http\Controllers\DailyCheckController::class, 'batchCreateTickets'])->name('daily-check.batch-create-tickets');
 
     // Master Data (Khusus Manager & Super Admin)
     Route::middleware('role:manager')->prefix('master')->name('master.')->group(function () {

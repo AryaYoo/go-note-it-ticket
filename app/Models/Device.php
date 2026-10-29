@@ -54,6 +54,31 @@ class Device extends Model
         return $this->belongsToMany(Ticket::class, 'ticket_devices');
     }
 
+    /**
+     * Relasi tiket yang masih berstatus belum Closed (Open atau Eskalasi)
+     */
+    public function openTickets()
+    {
+        return $this->tickets()->where('status', '!=', 'Closed');
+    }
+
+    /**
+     * Ambil tiket aktif pertama yang belum Closed (memanfaatkan eager loaded tickets jika tersedia)
+     */
+    public function activeOpenTicket(): ?Ticket
+    {
+        if ($this->relationLoaded('tickets')) {
+            return $this->tickets->first(fn($t) => $t->status !== 'Closed');
+        }
+
+        return $this->openTickets()->latest('tickets.id')->first();
+    }
+
+    public function hasOpenTicket(): bool
+    {
+        return $this->activeOpenTicket() !== null;
+    }
+
     /** Label display: "Alias (Model)" atau fallback ke type */
     public function getDisplayNameAttribute(): string
     {

@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Ticket;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class UpdateTicketRequest extends FormRequest
 {
@@ -10,8 +13,20 @@ class UpdateTicketRequest extends FormRequest
 
     public function rules(): array
     {
+        $ticket = $this->route('ticket');
+        $ticketId = $ticket instanceof Ticket ? $ticket->id : $ticket;
+        $companyId = $ticket instanceof Ticket ? $ticket->company_id : (Auth::user()?->company_id ?? 1);
+
         return [
-            'nomor_tiket'         => 'required|string|max:30|regex:/^IT-\d{8}-\d{3}$/|unique:tickets,nomor_tiket,' . $this->ticket->id,
+            'nomor_tiket' => [
+                'required',
+                'string',
+                'max:30',
+                'regex:/^IT-\d{8}-\d{3}$/',
+                Rule::unique('tickets', 'nomor_tiket')
+                    ->where(fn ($query) => $query->where('company_id', $companyId))
+                    ->ignore($ticketId),
+            ],
             'tanggal_kejadian'    => 'required|date',
             'nama_pelapor'        => 'required|string|max:150',
             'divisi_toko'         => 'required|string|max:150',

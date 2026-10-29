@@ -187,7 +187,7 @@
                     <label class="form-label">Kategori Kendala</label>
                     <select name="kategori" id="f-kategori" class="form-select">
                         <option value="">— Pilih Kategori —</option>
-                        @foreach(['POS','Akun','Device','Laptop','CCTV','Lainnya'] as $k)
+                        @foreach(['POS','Akun','Device','Laptop','CCTV','NVR','Lainnya'] as $k)
                         <option value="{{ $k }}" {{ ($prefill['kategori'] ?? '') === $k ? 'selected' : '' }}>{{ $k }}</option>
                         @endforeach
                     </select>
@@ -197,7 +197,7 @@
                     <select name="prioritas" id="f-prioritas" class="form-select">
                         <option value="">— Pilih Prioritas —</option>
                         @foreach(['Low','Medium','High'] as $p)
-                        <option value="{{ $p }}">{{ $p }}</option>
+                        <option value="{{ $p }}" {{ ($prefill['prioritas'] ?? '') === $p ? 'selected' : '' }}>{{ $p }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -208,7 +208,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Dampak Operasional</label>
-                <textarea name="dampak_operasional" id="f-dampak_operasional" class="form-textarea" rows="2" placeholder="Dampak terhadap penjualan / operasional toko..."></textarea>
+                <textarea name="dampak_operasional" id="f-dampak_operasional" class="form-textarea" rows="2" placeholder="Dampak terhadap penjualan / operasional toko...">{{ $prefill['dampak_operasional'] ?? '' }}</textarea>
             </div>
         </div>
     </div>
@@ -238,7 +238,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Tindakan yang Dilakukan</label>
-                <textarea name="tindakan_dilakukan" id="f-tindakan_dilakukan" class="form-textarea" rows="2" placeholder="Tindakan awal / perbaikan sementara yang dilakukan..."></textarea>
+                <textarea name="tindakan_dilakukan" id="f-tindakan_dilakukan" class="form-textarea" rows="2" placeholder="Tindakan awal / perbaikan sementara yang dilakukan...">{{ $prefill['tindakan_dilakukan'] ?? '' }}</textarea>
             </div>
         </div>
     </div>

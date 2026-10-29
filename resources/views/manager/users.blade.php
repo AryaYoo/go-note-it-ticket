@@ -144,6 +144,23 @@
     .form-group-compact select:focus {
         border-color: var(--primary);
     }
+
+    /* Icon-only action buttons */
+    .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 6px;
+        border: 1px solid var(--border); background: #fff; color: var(--muted);
+        cursor: pointer; transition: all 0.15s ease; position: relative;
+    }
+    .icon-btn:hover { background: #F3F4F6; color: var(--text); border-color: #D1D5DB; }
+    .icon-btn.icon-btn-danger { color: #EF4444; border-color: #FECACA; background: #FFF5F5; }
+    .icon-btn.icon-btn-danger:hover { background: #FEE2E2; border-color: #EF4444; }
+    .icon-btn[title]:hover::after {
+        content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%); background: #111827; color: #fff;
+        font-size: 11px; padding: 3px 7px; border-radius: 4px;
+        white-space: nowrap; pointer-events: none; z-index: 100;
+    }
 </style>
 @endpush
 
@@ -185,12 +202,16 @@
                         </span>
                     </td>
                     <td style="text-align: right;">
-                        <button type="button" onclick="editUser({{ $user->id }}, @js($user->name), @js($user->email), @js($user->divisi ?? ''), @js($user->role))" class="btn btn-secondary btn-sm" style="margin-right: 4px;">Edit</button>
+                        <button type="button" onclick="editUser({{ $user->id }}, @js($user->name), @js($user->email), @js($user->divisi ?? ''), @js($user->role))" class="icon-btn" title="Edit User" style="margin-right: 4px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
                         @if($user->id !== auth()->id())
                         <form action="{{ route('manager.users.destroy', $user) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user ini?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                            <button type="submit" class="icon-btn icon-btn-danger" title="Hapus User">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            </button>
                         </form>
                         @endif
                     </td>
@@ -308,7 +329,7 @@
         document.getElementById('edit-divisi').value = divisi || '';
         document.getElementById('edit-role').value = (role === 'user' ? 'staff' : role);
         
-        document.getElementById('edit-user-form').action = `/manager/users/${id}`;
+        document.getElementById('edit-user-form').action = `{{ url('/manager/users') }}/${id}`;
         openModal('edit-user-modal');
     }
 

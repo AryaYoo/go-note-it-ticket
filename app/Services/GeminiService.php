@@ -171,6 +171,93 @@ PROMPT;
     }
 
     /**
+     * Analisis gambar/screenshot bukti penyelesaian kendala tiket (maks 3 gambar).
+     *
+     * @param  string[] $imagePaths Array path file gambar
+     * @param  \App\Models\Ticket|null $ticket Objek tiket terkait
+     * @return array
+     */
+    public function analyzeResolutionScreenshot(array $imagePaths, ?\App\Models\Ticket $ticket = null): array
+    {
+        if (empty($imagePaths)) {
+            throw new \RuntimeException('Tidak ada gambar bukti yang dikirim untuk dianalisis.');
+        }
+
+        $imageParts = [];
+        foreach (array_slice($imagePaths, 0, 3) as $path) {
+            $mimeType     = mime_content_type($path) ?: 'image/png';
+            $imageParts[] = [
+                'inline_data' => [
+                    'mime_type' => $mimeType,
+                    'data'      => base64_encode(file_get_contents($path)),
+                ],
+            ];
+        }
+
+        $contextInfo = '';
+        if ($ticket) {
+            $contextInfo = "Konteks Laporan Kendala Tiket Saat Ini:\n"
+                . "- Nomor Tiket: {$ticket->nomor_tiket}\n"
+                . "- Kategori: {$ticket->kategori}\n"
+                . "- Deskripsi Kendala: {$ticket->deskripsi_kendala}\n"
+                . "- Dampak Operasional: {$ticket->dampak_operasional}\n"
+                . "- PIC: " . ($ticket->pic ?: 'Belum ditentukan') . "\n";
+        }
+
+        $prompt = <<<PROMPT
+Kamu adalah asisten IT Helpdesk profesional.
+Tugasmu adalah menganalisis tangkapan layar/foto bukti penyelesaian kendala teknis berikut ini.
+
+{$contextInfo}
+
+Gambar yang dilampirkan adalah bukti perbaikan, screenshot konfirmasi penyelesaian kendala (misalnya percakapan WhatsApp/grup IT), atau foto fisik perangkat yang telah diperbaiki/berfungsi kembali.
+
+Analisis gambar secara seksama dan rumuskan formulir penyelesaian tiket dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks tambahan):
+
+{
+  "tindakan_dilakukan": "<tindakan atau langkah teknis penanganan yang telah dilakukan untuk memperbaiki kendala>",
+  "solusi_diberikan": "<solusi final yang diberikan atau konfirmasi kondisi perangkat/sistem yang sudah kembali normal>",
+  "root_cause": "<akar penyebab terjadinya masalah/kendala berdasarkan informasi pada bukti gambar atau analisis teknis IT>",
+  "tanggal_penyelesaian": "<tanggal selesai dalam format YYYY-MM-DD jika dapat disimpulkan dari waktu/tanggal bukti, jika tidak kembalikan null>"
+}
+
+Aturan Pengisian:
+1. Berikan narasi yang jelas, profesional, ringkas, dan relevan dengan kendala yang dilaporkan.
+2. JANGAN gunakan tanda strip '-', 'belum diselesaikan', 'belum ada solusi', atau teks kosong. Ekstrak dan simpulkan solusi nyata dari bukti gambar tersebut.
+3. Pastikan bahasa Indonesia yang digunakan baku dan sesuai standar pelaporan IT Helpdesk.
+PROMPT;
+
+        $parts = array_merge($imageParts, [['text' => $prompt]]);
+
+        $responseJson = $this->execute([
+            'contents' => [
+                ['parts' => $parts],
+            ],
+            'generationConfig' => [
+                'temperature'     => 0.2,
+                'maxOutputTokens' => 1024,
+            ],
+        ], 45);
+
+        $text = data_get($responseJson, 'candidates.0.content.parts.0.text', '');
+        $text = preg_replace('/```json\s*/i', '', $text);
+        $text = preg_replace('/```\s*/i', '', $text);
+        $text = trim($text);
+
+        $data = json_decode($text, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Log::error('Gemini response tidak valid JSON untuk analisis penyelesaian', ['text' => $text]);
+            throw new \RuntimeException('Respons AI tidak dapat diproses. Coba ulangi analisis.');
+        }
+
+        if (empty($data['tanggal_penyelesaian'])) {
+            $data['tanggal_penyelesaian'] = now()->format('Y-m-d');
+        }
+
+        return $data;
+    }
+
+    /**
      * Generate rekomendasi operasional berbasis statistik tiket.
      */
     public function generateRecommendations(array $stats): string

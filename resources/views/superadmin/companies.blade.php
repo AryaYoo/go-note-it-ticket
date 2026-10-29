@@ -440,7 +440,7 @@
 @push('scripts')
 <script>
 function openEditCompany(id, name, email, isActive, keyTiket, keyDoc) {
-    document.getElementById('editCompanyForm').action = `/superadmin/companies/${id}`;
+    document.getElementById('editCompanyForm').action = `{{ url('/superadmin/companies') }}/${id}`;
     document.getElementById('editCompanyName').value  = name;
     document.getElementById('editCompanyEmail').value = email || '';
     document.getElementById('editCompanyStatus').value = isActive ? '1' : '0';

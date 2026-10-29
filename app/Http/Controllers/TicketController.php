@@ -37,22 +37,22 @@ class TicketController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
-        $today   = now();
-        $prefix  = 'IT-' . $today->format('dmY') . '-';
-        $lastNum = Ticket::where('nomor_tiket', 'like', $prefix . '%')->count() + 1;
-        $suggestNomor = $prefix . str_pad($lastNum, 3, '0', STR_PAD_LEFT);
+        $suggestNomor = Ticket::generateNextNomorTiket(now(), (int) $user->company_id);
 
         // Pre-fill dari pengecekan harian
         $prefill = [];
         if ($request->boolean('from_check')) {
             $prefill = [
-                'from_check'        => true,
-                'item_ids'          => $request->input('item_ids', ''),
-                'tanggal_kejadian'  => $request->input('tanggal_kejadian', date('Y-m-d')),
-                'divisi_toko'       => $request->input('divisi_toko', ''),
-                'store_id'          => $request->input('store_id', ''),
-                'deskripsi_kendala' => $request->input('deskripsi_kendala', ''),
-                'kategori'          => $request->input('kategori', ''),
+                'from_check'          => true,
+                'item_ids'            => $request->input('item_ids', ''),
+                'tanggal_kejadian'    => $request->input('tanggal_kejadian', date('Y-m-d')),
+                'divisi_toko'         => $request->input('divisi_toko', ''),
+                'store_id'            => $request->input('store_id', ''),
+                'deskripsi_kendala'   => $request->input('deskripsi_kendala', ''),
+                'kategori'            => $request->input('kategori', ''),
+                'prioritas'           => $request->input('prioritas', 'Medium'),
+                'tindakan_dilakukan'  => $request->input('tindakan_dilakukan', ''),
+                'dampak_operasional'  => $request->input('dampak_operasional', ''),
             ];
         }
 
@@ -95,26 +95,28 @@ class TicketController extends Controller
         $data['company_id']  = Auth::user()->company_id; // ikat tiket ke perusahaan user
         $data['pic']         = $data['pic'] ?? Auth::user()->name;
 
+        // Jika tiket dibuat dari pengecekan harian, pastikan perangkat belum memiliki tiket aktif yang belum Closed
+        if ($request->filled('_item_ids')) {
+            $itemIds = array_filter(array_map('intval', explode(',', $request->input('_item_ids'))));
+            if (!empty($itemIds)) {
+                $checkItems = \App\Models\DailyCheckItem::with('device.tickets')->whereIn('id', $itemIds)->get();
+                foreach ($checkItems as $ci) {
+                    $existingOpenTicket = $ci->device?->tickets()->where('status', '!=', 'Closed')->latest('tickets.id')->first();
+                    if ($existingOpenTicket) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Perangkat '{$ci->device->display_name}' masih memiliki tiket aktif (#{$existingOpenTicket->nomor_tiket}) yang belum Closed. Tidak bisa membuat tiket baru sampai tiket tersebut Closed.",
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         // Gunakan Database Transaction & Locking untuk auto-correction nomor tiket
         $ticket = DB::transaction(function () use ($data, $request) {
-            $tgl = \Carbon\Carbon::parse($data['tanggal_kejadian']);
-            $prefix  = 'IT-' . $tgl->format('dmY') . '-';
-            
-            // Ambil tiket terakhir di hari yang sama, lock barisnya agar tidak ada user lain yang baca (prevent race condition)
-            $lastTicket = Ticket::where('nomor_tiket', 'like', $prefix . '%')
-                                ->lockForUpdate()
-                                ->orderBy('nomor_tiket', 'desc')
-                                ->first();
-                                
-            $lastNum = 0;
-            if ($lastTicket) {
-                $parts = explode('-', $lastTicket->nomor_tiket);
-                $lastNum = (int) end($parts);
-            }
-            
-            // Auto-correct nomor tiket (Abaikan nomor dari form frontend, buat yang final)
-            $nextNum = $lastNum + 1;
-            $data['nomor_tiket'] = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+            // Auto-correct nomor tiket dengan memperhitungkan soft-deleted
+            $companyId = $data['company_id'] ?? Auth::user()->company_id;
+            $data['nomor_tiket'] = Ticket::generateNextNomorTiket($data['tanggal_kejadian'], (int) $companyId);
 
             // Tandai sumber preventive jika dari pengecekan harian
             if ($request->filled('_item_ids')) {
@@ -237,6 +239,130 @@ class TicketController extends Controller
             'message'  => 'Tiket berhasil diperbarui.',
             'redirect' => route('tickets.show', $ticket),
         ]);
+    }
+
+    /**
+     * Analisis gambar bukti penyelesaian tiket via Gemini AI.
+     */
+    public function analyzeResolution(Request $request, Ticket $ticket)
+    {
+        Gate::authorize('update', $ticket);
+
+        $request->validate([
+            'images'   => 'required|array|min:1|max:3',
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
+        ], [
+            'images.required' => 'Harap unggah minimal 1 gambar bukti.',
+            'images.max'      => 'Maksimal 3 gambar per analisis.',
+            'images.*.image'  => 'Setiap file harus berupa gambar.',
+            'images.*.max'    => 'Ukuran setiap gambar maksimal 10 MB.',
+        ]);
+
+        try {
+            $tmpPaths = [];
+            foreach ($request->file('images') as $file) {
+                $tmpPaths[] = $file->getRealPath();
+            }
+
+            $result = $this->gemini->analyzeResolutionScreenshot($tmpPaths, $ticket);
+
+            return response()->json(['success' => true, 'data' => $result]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function close(Request $request, Ticket $ticket)
+    {
+        Gate::authorize('update', $ticket);
+
+        if ($ticket->status === 'Closed') {
+            return response()->json(['success' => false, 'message' => 'Tiket sudah berstatus Closed.'], 422);
+        }
+
+        $request->validate([
+            'tanggal_penyelesaian' => 'nullable|date',
+            'tindakan_dilakukan'   => 'nullable|string',
+            'solusi_diberikan'     => 'nullable|string',
+            'root_cause'           => 'nullable|string',
+            'lampiran_gambar'      => 'nullable|array|max:3',
+            'lampiran_gambar.*'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
+        ]);
+
+        $closedDate = $request->input('tanggal_penyelesaian') ?: now()->toDateString();
+        $oldStatus = $ticket->status;
+        $oldClosedDate = $ticket->tanggal_penyelesaian ? $ticket->tanggal_penyelesaian->format('Y-m-d') : null;
+
+        $updateData = [
+            'status'               => 'Closed',
+            'tanggal_penyelesaian' => $closedDate,
+        ];
+
+        if ($request->has('tindakan_dilakukan')) {
+            $updateData['tindakan_dilakukan'] = $request->input('tindakan_dilakukan');
+        }
+        if ($request->has('solusi_diberikan')) {
+            $updateData['solusi_diberikan'] = $request->input('solusi_diberikan');
+        }
+        if ($request->has('root_cause')) {
+            $updateData['root_cause'] = $request->input('root_cause');
+        }
+
+        $newPhotosCount = 0;
+        if ($request->hasFile('lampiran_gambar')) {
+            $existing = is_array($ticket->lampiran_gambar)
+                ? $ticket->lampiran_gambar
+                : ($ticket->lampiran_gambar ? [$ticket->lampiran_gambar] : []);
+
+            $companyId = $ticket->company_id ?? Auth::user()->company_id ?? 'shared';
+            foreach ($request->file('lampiran_gambar') as $file) {
+                $path = $file->store('tickets/company_' . $companyId . '/' . $ticket->nomor_tiket, 'private');
+                $existing[] = $path;
+                $newPhotosCount++;
+            }
+            $updateData['lampiran_gambar'] = $existing;
+        }
+
+        $ticket->update($updateData);
+
+        $desc = "Status diubah dari '{$oldStatus}' menjadi 'Closed' (Tgl Selesai: " . date('d/m/Y', strtotime($closedDate)) . ")";
+        if ($newPhotosCount > 0) {
+            $desc .= "; Ditambahkan {$newPhotosCount} foto bukti penyelesaian";
+        }
+        if (!empty($updateData['solusi_diberikan'])) {
+            $desc .= "; Solusi diperbarui";
+        }
+
+        \App\Models\TicketHistory::create([
+            'company_id'  => $ticket->company_id,
+            'ticket_id'   => $ticket->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'status_changed',
+            'description' => $desc,
+            'changes'     => [
+                'status'               => ['old' => $oldStatus, 'new' => 'Closed'],
+                'tanggal_penyelesaian' => ['old' => $oldClosedDate, 'new' => $closedDate],
+            ],
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Tiket berhasil ditutup.']);
+    }
+
+    /**
+     * Kembalikan tiket pada tanggal tertentu dalam format JSON untuk fitur Share Text.
+     */
+    public function shareText(Request $request)
+    {
+        $request->validate(['date' => 'required|date_format:Y-m-d']);
+
+        $tickets = Ticket::whereDate('tanggal_kejadian', $request->date)
+            ->orderBy('prioritas', 'asc')
+            ->orderBy('nomor_tiket', 'asc')
+            ->get(['nomor_tiket', 'tanggal_kejadian', 'nama_pelapor', 'divisi_toko',
+                   'kategori', 'prioritas', 'deskripsi_kendala', 'status', 'pic',
+                   'tindakan_dilakukan', 'solusi_diberikan']);
+
+        return response()->json(['tickets' => $tickets]);
     }
 
     public function destroy(Ticket $ticket)

@@ -5,7 +5,7 @@
 @section('content')
 <div class="page-header">
     <div style="display: flex; align-items: center; gap: 16px;">
-        <a href="{{ route('tickets.index') }}" class="btn btn-ghost btn-sm" style="padding: 6px; color: var(--muted);" title="Kembali ke Riwayat Tiket">
+        <a href="{{ route('tickets.index') }}" id="btn-back-to-list" class="btn btn-ghost btn-sm" style="padding: 6px; color: var(--muted);" title="Kembali ke Riwayat Tiket">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
         </a>
         <div>
@@ -16,6 +16,12 @@
         </div>
     </div>
     <div class="flex gap-8">
+        @if($ticket->status !== 'Closed')
+        <button type="button" class="btn btn-sm" onclick="closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d')]) }})" style="background: #16A34A; color: #fff; border-color: #16A34A;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"/></svg>
+            Tutup Tiket
+        </button>
+        @endif
         <a href="{{ route('tickets.edit', $ticket) }}" class="btn btn-secondary btn-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit Tiket
@@ -186,4 +192,22 @@
     </div>
 
 </div>
+
+@include('tickets.partials.modal-close')
 @endsection
+
+@push('scripts')
+<script>
+// Kembalikan tombol Back ke URL filter yang tersimpan di sessionStorage.
+// Ini memastikan filter/search tidak ter-reset saat kembali dari halaman detail.
+const savedListUrl = sessionStorage.getItem('tickets_list_url');
+const btnBack = document.getElementById('btn-back-to-list');
+if (btnBack && savedListUrl) {
+    btnBack.href = savedListUrl;
+}
+
+function closeTicket(id, nomor, initialData = {}) {
+    openCloseTicketModal(id, nomor, initialData);
+}
+</script>
+@endpush

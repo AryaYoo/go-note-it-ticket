@@ -70,14 +70,21 @@
     }
 
     .btn-danger-sm {
-        padding: 6px 13px; border-radius: 6px;
+        width: 30px; height: 30px; border-radius: 6px;
         border: 1.5px solid #FECACA;
-        background: #fff; cursor: pointer;
-        font-size: 12px; font-weight: 600; color: var(--sa-red);
-        display: inline-flex; align-items: center; gap: 5px;
+        background: #FFF5F5; cursor: pointer;
+        color: var(--sa-red);
+        display: inline-flex; align-items: center; justify-content: center;
         transition: background .15s, border-color .15s;
+        position: relative;
     }
-    .btn-danger-sm:hover { background: #FEF2F2; border-color: #EF4444; }
+    .btn-danger-sm:hover { background: #FEE2E2; border-color: #EF4444; }
+    .btn-danger-sm[title]:hover::after {
+        content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%); background: #111827; color: #fff;
+        font-size: 11px; padding: 3px 7px; border-radius: 4px;
+        white-space: nowrap; pointer-events: none; z-index: 100;
+    }
 
     /* ── Empty state ────────────────────────────────────── */
     .sa-empty {
@@ -184,14 +191,13 @@
                     <form method="POST" action="{{ route('superadmin.managers.destroy', $manager) }}"
                         onsubmit="return confirm('Hapus manager {{ addslashes($manager->name) }}?')" style="display:inline">
                         @csrf @method('DELETE')
-                        <button type="submit" class="btn-danger-sm">
+                        <button type="submit" class="btn-danger-sm" title="Hapus Manager">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"/>
                                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                                 <path d="M10 11v6"/><path d="M14 11v6"/>
                                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                             </svg>
-                            Hapus
                         </button>
                     </form>
                 </td>

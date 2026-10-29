@@ -145,4 +145,40 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketHistory::class)->latest();
     }
+
+    /**
+     * Generate nomor tiket berikutnya yang unik untuk company dan tanggal tertentu,
+     * memperhitungkan soft-deleted tickets agar tidak terjadi tabrakan unique constraint.
+     */
+    public static function generateNextNomorTiket(string|\DateTimeInterface $tanggal, int $companyId): string
+    {
+        $tgl = \Carbon\Carbon::parse($tanggal);
+        $prefix = 'IT-' . $tgl->format('dmY') . '-';
+
+        $existing = static::withTrashed()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('nomor_tiket', 'like', $prefix . '%')
+            ->lockForUpdate()
+            ->pluck('nomor_tiket');
+
+        $maxNum = 0;
+        foreach ($existing as $nomor) {
+            $parts = explode('-', $nomor);
+            $num = (int) end($parts);
+            if ($num > $maxNum) {
+                $maxNum = $num;
+            }
+        }
+
+        $nextNum = $maxNum + 1;
+        $nomorTiket = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+        while (static::withTrashed()->withoutGlobalScopes()->where('company_id', $companyId)->where('nomor_tiket', $nomorTiket)->exists()) {
+            $nextNum++;
+            $nomorTiket = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $nomorTiket;
+    }
 }

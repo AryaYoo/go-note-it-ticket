@@ -170,31 +170,45 @@
 
 @section('content')
 
-{{-- Sticky Save Bar --}}
-<div class="check-save-bar" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+{{-- Header --}}
+<div class="check-header-bar">
     <div>
-        <h1 style="font-size:18px; font-weight:700; margin-bottom:2px;">Pengecekan Harian</h1>
+        <h1 style="font-size:18px; font-weight:700; margin-bottom:4px;">Pengecekan Harian</h1>
         <div class="check-date-badge">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             {{ \Carbon\Carbon::parse($today)->translatedFormat('l, d F Y') }}
         </div>
     </div>
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        {{-- Search Input --}}
-        <div class="search-input-wrap" style="min-width:240px; max-width:320px;">
+        {{-- Search --}}
+        <div class="search-input-wrap" style="min-width:200px; max-width:280px;">
             <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="daily-check-search" class="search-input" placeholder="Cari toko, cabang, perangkat..." autocomplete="off" oninput="filterDailyCheck(this.value)">
+            <input type="text" id="daily-check-search" class="search-input" placeholder="Cari toko, perangkat..." autocomplete="off" oninput="filterDailyCheck(this.value)">
             <button type="button" id="daily-check-search-clear" class="search-clear-btn" style="display:none; background:none; border:none; cursor:pointer;" onclick="clearDailyCheckSearch()" title="Hapus pencarian">✕</button>
         </div>
-
-        <button type="button" id="btn-reset-daily-search" class="btn btn-ghost btn-sm" style="display:none; align-items:center; gap:5px; border:1px solid var(--border); color:var(--muted);" onclick="clearDailyCheckSearch()" title="Reset pencarian">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.73"/></svg>
-            Reset
+        {{-- Tombol Share Offline (Text) --}}
+        <button
+            type="button"
+            id="btn-share-offline"
+            class="btn btn-secondary"
+            style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;"
+            onclick="shareOfflineText()"
+            title="Salin ringkasan offline untuk dibagikan (WhatsApp, dll)"
+        >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Share Offline (Text)
         </button>
 
-        <span class="save-status" id="save-status">Siap disimpan</span>
-        <button class="btn btn-primary" id="btn-save-all" onclick="saveAll()" title="Simpan Semua">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        {{-- Tombol Laporkan Semua --}}
+        <button
+            id="btn-report-all"
+            class="btn btn-danger"
+            style="display:none; align-items:center; gap:6px; font-size:13px;"
+            onclick="reportAllOffline()"
+        >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Laporkan Semua Offline
+            <span id="btn-report-all-count" style="background:rgba(255,255,255,0.25); border-radius:10px; padding:1px 7px; font-size:11.5px; font-weight:700;">0</span>
         </button>
     </div>
 </div>
@@ -254,17 +268,32 @@
             </thead>
             <tbody>
             @foreach($items as $item)
-            @php $device = $item->device; $isOffline = $item->is_offline; @endphp
+            @php
+                $device = $item->device;
+                $isOffline = $item->is_offline;
+                $openTicket = $device->tickets->first(fn($t) => $t->status !== 'Closed');
+                $hasOpenTicket = (bool) $openTicket;
+            @endphp
             <tr class="device-row {{ $isOffline ? 'is-offline' : '' }}" id="row-{{ $item->id }}" data-device-search="{{ strtolower(($store?->name ?? '') . ' ' . ($store?->branch ?? '') . ' ' . $device->type . ' ' . ($device->alias ?? '') . ' ' . ($device->model ?? '') . ' ' . ($device->serial_number ?? '')) }}">
                 <td>
                     <input type="checkbox"
                         class="offline-toggle"
                         data-item="{{ $item->id }}"
                         data-store="{{ $storeId }}"
+                        data-store-name="{{ $store?->name ?? '' }}"
+                        data-store-branch="{{ $store?->branch ?? '' }}"
+                        data-device-type="{{ strtolower(trim($device->type ?? '')) }}"
+                        data-device-alias="{{ $device->alias ?? '' }}"
+                        data-device-model="{{ $device->model ?? '' }}"
+                        data-notes="{{ $item->notes ?? '' }}"
+                        data-channels="{{ $item->affected_channels ?? '' }}"
+                        data-result="{{ $item->result ?? '' }}"
+                        data-has-open-ticket="{{ $hasOpenTicket ? '1' : '0' }}"
                         {{ $isOffline ? 'checked' : '' }}
+                        {{ $hasOpenTicket ? 'disabled' : '' }}
                         onchange="toggleOffline(this)"
-                        style="accent-color: var(--danger); width:16px; height:16px; cursor:pointer;"
-                        title="Centang jika device offline">
+                        style="accent-color: var(--danger); width:16px; height:16px; {{ $hasOpenTicket ? 'cursor:not-allowed; opacity:0.8;' : 'cursor:pointer;' }}"
+                        title="{{ $hasOpenTicket ? 'Perangkat memiliki tiket aktif (#' . $openTicket->nomor_tiket . ') yang belum Closed' : 'Centang jika device offline' }}">
                 </td>
                 <td>
                     <div style="font-weight:600;">{{ $device->alias ?: $device->type }}</div>
@@ -280,70 +309,49 @@
                     @endif
                 </td>
                 <td style="text-align:center;">
-                    <span id="status-badge-{{ $item->id }}" class="status-dot {{ $isOffline ? 'status-offline' : 'status-ok' }}" title="{{ $isOffline ? 'Offline' : 'OK' }}"></span>
+                    <span id="status-badge-{{ $item->id }}" class="status-dot {{ $isOffline ? 'status-offline' : 'status-ok' }}" title="{{ $hasOpenTicket ? 'Offline (Tiket Aktif #' . $openTicket->nomor_tiket . ')' : ($isOffline ? 'Offline' : 'OK') }}"></span>
                 </td>
                 <td>
-                    @if($item->result)
+                    @if($hasOpenTicket)
+                        <a href="{{ route('tickets.show', $openTicket->id) }}" target="_blank" class="badge pill-ticket_created" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Lihat detail tiket #{{ $openTicket->nomor_tiket }}">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            #{{ $openTicket->nomor_tiket }}
+                        </a>
+                    @elseif($item->result)
                         <span class="badge pill-{{ $item->result }}" id="result-pill-{{ $item->id }}">{{ $item->resultLabel() }}</span>
                     @else
                         <span style="color:var(--muted); font-size:12px;" id="result-pill-{{ $item->id }}">—</span>
                     @endif
                 </td>
             </tr>
-            {{-- Offline Detail Row --}}
-            <tr id="detail-row-{{ $item->id }}">
-                <td colspan="6" style="padding:0; border:none;">
-                    <div class="offline-detail {{ $isOffline ? 'visible' : '' }}" id="detail-{{ $item->id }}">
-                        <div class="offline-detail-grid">
-                            <div class="form-group">
-                                <label class="form-label" style="font-size:11.5px;">Offline Sejak</label>
-                                <input type="datetime-local" class="form-input" style="font-size:12px;"
-                                    id="since-{{ $item->id }}"
-                                    value="{{ $item->offline_since ? $item->offline_since->format('Y-m-d\TH:i') : '' }}"
-                                    onchange="markDirty()">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" style="font-size:11.5px;">Kanal Terdampak</label>
-                                <input type="text" class="form-input" style="font-size:12px;"
-                                    id="channels-{{ $item->id }}"
-                                    value="{{ $item->affected_channels ?? '' }}"
-                                    placeholder="Contoh: Kanal 1,3,5"
-                                    onchange="markDirty()">
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-top:10px;">
-                            <label class="form-label" style="font-size:11.5px;">Catatan</label>
-                            <input type="text" class="form-input" style="font-size:12px;"
-                                id="notes-{{ $item->id }}"
-                                value="{{ $item->notes ?? '' }}"
-                                placeholder="Catatan tambahan..."
-                                onchange="markDirty()">
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            {{-- Result Action Row --}}
+
+            {{-- Report Offline Row --}}
             <tr id="result-action-row-{{ $item->id }}">
                 <td colspan="6" style="padding:0; border:none;">
-                    <div class="result-row {{ $isOffline ? 'visible' : '' }}" id="result-actions-{{ $item->id }}">
-                        <span class="result-label">Hasil:</span>
-                        @if(!$item->result || $item->result === 'ticket_created')
-                            <button class="icon-btn icon-btn-success" title="Diperbaiki Cepat" onclick="resolveItem({{ $item->id }}, 'fixed')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                            </button>
-                            <button class="icon-btn" title="Bukan Kerusakan" style="border:1px solid var(--border);" onclick="resolveItem({{ $item->id }}, 'no_fault')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                            <button class="icon-btn icon-btn-primary" title="Buat Tiket" onclick="addToTicketSelection({{ $item->id }}, {{ $storeId }}, '{{ addslashes($device->alias ?: $device->type) }}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-4-4z"/><polyline points="15 5 15 9 19 9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
+                    <div class="result-row {{ $isOffline ? 'visible' : '' }}" id="result-actions-{{ $item->id }}" style="padding:10px 18px 12px 48px;">
+                        @if($hasOpenTicket)
+                            <div style="display:inline-flex; align-items:center; gap:8px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:6px; padding:6px 12px; font-size:12px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span style="color:#1E40AF;">
+                                    Tiket aktif: <a href="{{ route('tickets.show', $openTicket->id) }}" target="_blank" style="font-weight:700; color:#1D4ED8; text-decoration:underline;">#{{ $openTicket->nomor_tiket }}</a>
+                                </span>
+                                <span class="badge {{ $openTicket->statusBadgeClass() }}" style="font-size:10.5px;">{{ $openTicket->status }}</span>
+                                <span style="color:#64748B; font-size:11.5px;">(Tidak dapat membuat tiket baru sampai tiket ini Closed)</span>
+                            </div>
+                        @elseif(!$item->result)
+                            <button
+                                class="btn btn-danger btn-sm"
+                                style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 14px;"
+                                onclick="reportOffline({{ $item->id }})"
+                            >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                Laporkan Offline
                             </button>
                         @else
                             <span style="font-size:12px; color:var(--muted);">
                                 Sudah ditandai: <strong>{{ $item->resultLabel() }}</strong>
                             </span>
-                            <button class="icon-btn" title="Reset Status" onclick="resolveItem({{ $item->id }}, null)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.73"/></svg>
-                            </button>
+                            <button class="btn btn-ghost btn-sm" style="font-size:11.5px;" onclick="resolveItem({{ $item->id }}, null)">Reset</button>
                         @endif
                     </div>
                 </td>
@@ -362,42 +370,9 @@
     <button type="button" class="btn btn-secondary btn-sm" onclick="clearDailyCheckSearch()">Reset Pencarian</button>
 </div>
 
-{{-- Floating action: Create ticket from selection --}}
-<div id="ticket-selection-bar" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:200; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); padding:12px 20px; display:none; align-items:center; gap:14px; min-width:380px;">
-    <div>
-        <div style="font-size:13px; font-weight:600;" id="selection-label">0 device dipilih</div>
-        <div style="font-size:11px; color:var(--muted);" id="selection-store-name"></div>
-    </div>
-    <button class="btn btn-primary" onclick="proceedCreateTicket()">
-        Buat Tiket →
-    </button>
-    <button class="btn btn-ghost btn-sm" onclick="clearTicketSelection()">Batal</button>
-</div>
-@endif
 
-{{-- Modal: konfirmasi buat tiket --}}
-<div class="modal-backdrop hidden" id="modal-ticket">
-    <div class="modal-box">
-        <div class="modal-header">
-            <div class="modal-title">Buat Tiket dari Pengecekan Harian</div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-ticket').classList.add('hidden')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div style="font-size:13px; color:var(--muted); line-height:1.6;">
-                Device yang akan dimasukkan ke tiket:
-            </div>
-            <div id="modal-device-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-            <div class="form-group">
-                <label class="form-label">Tanggal Kejadian <span class="required">*</span></label>
-                <input type="date" id="ticket-date" class="form-input" value="{{ $today }}">
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="document.getElementById('modal-ticket').classList.add('hidden')">Batal</button>
-            <button class="btn btn-primary" onclick="submitCreateTicket()">Lanjut Buat Tiket →</button>
-        </div>
-    </div>
-</div>
+
+@endif
 
 @endsection
 
@@ -405,9 +380,6 @@
 <script>
 // ── State ────────────────────────────────────────
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
-let isDirty = false;
-let ticketSelection = []; // array of {itemId, storeId, label}
-let ticketSelectionStoreId = null;
 
 // ── Group toggle ──────────────────────────────────
 function toggleGroup(storeId) {
@@ -492,91 +464,65 @@ function clearDailyCheckSearch() {
     if (input) input.focus();
 }
 
-// ── Offline toggle ────────────────────────────────
+// ── Offline toggle (auto-save langsung) ──────────
 function toggleOffline(cb) {
     const id      = cb.dataset.item;
     const storeId = cb.dataset.store;
     const row     = document.getElementById('row-' + id);
-    const detail  = document.getElementById('detail-' + id);
     const actions = document.getElementById('result-actions-' + id);
     const badge   = document.getElementById('status-badge-' + id);
 
     if (cb.checked) {
         row.classList.add('is-offline');
-        detail.classList.add('visible');
         actions.classList.add('visible');
         badge.className = 'status-dot status-offline';
         badge.setAttribute('title', 'Offline');
-        badge.innerHTML = '';
     } else {
         row.classList.remove('is-offline');
-        detail.classList.remove('visible');
         actions.classList.remove('visible');
         badge.className = 'status-dot status-ok';
         badge.setAttribute('title', 'OK');
-        badge.innerHTML = '';
     }
     updateOfflineBadge(storeId);
-    markDirty();
+    updateReportAllBtn();
+
+    // Auto-save langsung tanpa tombol
+    fetch('{{ route("daily-check.save-items") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+        body: JSON.stringify({ items: [{ id: parseInt(id), is_offline: cb.checked }] }),
+    });
 }
 
 function updateOfflineBadge(storeId) {
     const checkboxes = document.querySelectorAll(`.offline-toggle[data-store="${storeId}"]`);
     const count = Array.from(checkboxes).filter(c => c.checked).length;
     const badge = document.getElementById('offline-badge-' + storeId);
-    badge.textContent = count === 0 ? '✓ Semua OK' : count + ' Offline';
-    badge.className = 'offline-count-badge ' + (count === 0 ? 'zero' : '');
-}
-
-// ── Dirty / Save ──────────────────────────────────
-function markDirty() {
-    isDirty = true;
-    const s = document.getElementById('save-status');
-    s.textContent = 'Ada perubahan belum disimpan';
-    s.className = 'save-status saving';
-}
-
-async function saveAll() {
-    const btn = document.getElementById('btn-save-all');
-    const statusEl = document.getElementById('save-status');
-    btn.disabled = true;
-    statusEl.textContent = 'Menyimpan...';
-    statusEl.className = 'save-status saving';
-
-    // Kumpulkan semua item
-    const items = [];
-    document.querySelectorAll('.offline-toggle').forEach(cb => {
-        const id = cb.dataset.item;
-        items.push({
-            id:               parseInt(id),
-            is_offline:       cb.checked,
-            offline_since:    document.getElementById('since-' + id)?.value || null,
-            affected_channels:document.getElementById('channels-' + id)?.value || null,
-            notes:            document.getElementById('notes-' + id)?.value || null,
-        });
-    });
-
-    try {
-        const res = await fetch('{{ route("daily-check.save-items") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-            body: JSON.stringify({ items }),
-        });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message);
-
-        isDirty = false;
-        statusEl.textContent = '✓ Tersimpan';
-        statusEl.className = 'save-status saved';
-        setTimeout(() => { statusEl.textContent = 'Siap disimpan'; statusEl.className = 'save-status'; }, 2500);
-    } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: err.message });
-        statusEl.textContent = 'Gagal menyimpan';
-        statusEl.className = 'save-status';
-    } finally {
-        btn.disabled = false;
+    if (badge) {
+        badge.textContent = count === 0 ? '✓ Semua OK' : count + ' Offline';
+        badge.className = 'offline-count-badge ' + (count === 0 ? 'zero' : '');
     }
 }
+
+// ── Tombol Laporkan / Buat Tiket Semua Offline ────
+function updateReportAllBtn() {
+    const checkboxes = document.querySelectorAll('.offline-toggle');
+    // Device offline yang belum dibuatkan tiket dan TIDAK memiliki tiket aktif yang belum Closed
+    const pending = Array.from(checkboxes).filter(c => c.checked && c.dataset.result !== 'ticket_created' && c.dataset.hasOpenTicket !== '1');
+    const btn = document.getElementById('btn-report-all');
+    const countSpan = document.getElementById('btn-report-all-count');
+
+    if (!btn) return;
+
+    if (pending.length > 0) {
+        btn.style.display = 'inline-flex';
+        if (countSpan) countSpan.textContent = pending.length;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', updateReportAllBtn);
 
 // ── Resolve Item ──────────────────────────────────
 async function resolveItem(itemId, result) {
@@ -615,94 +561,333 @@ async function resolveItem(itemId, result) {
             pill.className = 'badge pill-' + result;
             pill.textContent = result === 'fixed' ? 'Diperbaiki Cepat' : 'Bukan Kerusakan';
         }
+        const cb = document.querySelector(`.offline-toggle[data-item="${itemId}"]`);
+        if (cb) cb.dataset.result = result;
+        updateReportAllBtn();
         Swal.fire({ icon: 'success', title: 'Berhasil', timer: 1500, showConfirmButton: false });
     }
 }
 
-// ── Ticket Selection ──────────────────────────────
-function addToTicketSelection(itemId, storeId, label) {
-    // Validasi: harus toko yang sama
-    if (ticketSelectionStoreId && ticketSelectionStoreId !== storeId) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Beda Toko',
-            text: 'Hanya device dari toko yang sama yang bisa digabung dalam satu tiket.',
-        });
-        return;
-    }
-
-    // Toggle selection
-    const existing = ticketSelection.findIndex(i => i.itemId === itemId);
-    if (existing >= 0) {
-        ticketSelection.splice(existing, 1);
-    } else {
-        ticketSelection.push({ itemId, storeId, label });
-        ticketSelectionStoreId = storeId;
-    }
-
-    if (ticketSelection.length === 0) {
-        ticketSelectionStoreId = null;
-    }
-
-    // Langsung buka modal jika ada selection
-    if (ticketSelection.length > 0) {
-        openTicketModal();
-    }
-}
-
-function openTicketModal() {
-    const list = document.getElementById('modal-device-list');
-    list.innerHTML = '';
-    ticketSelection.forEach(sel => {
-        const div = document.createElement('div');
-        div.className = 'device-check-item selected';
-        div.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span style="font-size:13px; font-weight:500;">${sel.label}</span>`;
-        list.appendChild(div);
+// ── Laporkan Offline (1 Perangkat via Form Tiket) ─
+async function reportOffline(itemId) {
+    const nowISO = new Date().toISOString().slice(0, 16);
+    await fetch('{{ route("daily-check.save-items") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+        body: JSON.stringify({
+            items: [{ id: itemId, is_offline: true, offline_since: nowISO }]
+        }),
     });
-    document.getElementById('modal-ticket').classList.remove('hidden');
-}
 
-function clearTicketSelection() {
-    ticketSelection = [];
-    ticketSelectionStoreId = null;
-}
-
-async function proceedCreateTicket() {
-    openTicketModal();
-}
-
-async function submitCreateTicket() {
-    const date = document.getElementById('ticket-date').value;
-    if (!date) {
-        Swal.fire({ icon: 'warning', title: 'Tanggal wajib diisi', timer: 1800, showConfirmButton: false });
-        return;
-    }
+    const confirm = await Swal.fire({
+        title: 'Laporkan Offline?',
+        text: 'Anda akan dialihkan ke form pembuatan tiket untuk perangkat ini.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Lanjutkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#DC2626',
+    });
+    if (!confirm.isConfirmed) return;
 
     const res = await fetch('{{ route("daily-check.create-ticket") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
         body: JSON.stringify({
-            item_ids: ticketSelection.map(s => s.itemId),
-            tanggal_kejadian: date,
+            item_ids: [itemId],
+            tanggal_kejadian: '{{ $today }}',
         }),
     });
-
     const json = await res.json();
     if (json.success) {
-        document.getElementById('modal-ticket').classList.add('hidden');
         window.location.href = json.redirect_url;
     } else {
         Swal.fire({ icon: 'error', title: 'Gagal', text: json.message });
     }
 }
 
-// Auto-save setiap 60 detik jika ada perubahan
-setInterval(() => { if (isDirty) saveAll(); }, 60000);
+// ── Buat Tiket Semua Offline Sekaligus ────────────
+async function reportAllOffline() {
+    const checkboxes = document.querySelectorAll('.offline-toggle');
+    const pendingOffline = Array.from(checkboxes).filter(cb => cb.checked && cb.dataset.result !== 'ticket_created' && cb.dataset.hasOpenTicket !== '1');
 
-// Warn sebelum tutup halaman
-window.addEventListener('beforeunload', e => {
-    if (isDirty) { e.preventDefault(); e.returnValue = ''; }
-});
+    if (pendingOffline.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Tidak Ada Device Offline Baru',
+            text: 'Semua device offline sudah memiliki tiket atau tidak ada yang dicentang offline.',
+        });
+        return;
+    }
+
+    const itemIds = pendingOffline.map(cb => parseInt(cb.dataset.item));
+
+    // Hitung jumlah toko terdampak
+    const storeMap = {};
+    pendingOffline.forEach(cb => {
+        const storeId = cb.dataset.store;
+        storeMap[storeId] = (storeMap[storeId] || 0) + 1;
+    });
+    const storeCount = Object.keys(storeMap).length;
+
+    const confirm = await Swal.fire({
+        title: 'Buat Tiket Semua Offline?',
+        html: `Ditemukan <b>${pendingOffline.length} perangkat offline</b> di <b>${storeCount} toko</b>.<br><br>Sistem akan otomatis membuat tiket untuk masing-masing toko secara langsung.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Buat Semua Tiket',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#DC2626',
+    });
+    if (!confirm.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Sedang Membuat Tiket...',
+        text: 'Mohon tunggu beberapa saat...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+        const res = await fetch('{{ route("daily-check.batch-create-tickets") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            body: JSON.stringify({
+                item_ids: itemIds,
+                tanggal_kejadian: '{{ $today }}',
+            }),
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            let listHtml = '<div style="text-align:left; max-height:220px; overflow-y:auto; margin-top:10px; font-size:13px; border:1px solid #E5E7EB; border-radius:6px; padding:6px 10px;">';
+            json.tickets.forEach(t => {
+                listHtml += `<div style="padding:6px 0; border-bottom:1px solid #F3F4F6; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong style="color:#2563EB;">${t.nomor_tiket}</strong>
+                        <div style="font-size:11.5px; color:#6B7280;">${t.store_name}</div>
+                    </div>
+                    <span style="font-size:11px; background:#FEE2E2; color:#DC2626; padding:2px 8px; border-radius:10px; font-weight:600;">${t.count} device</span>
+                </div>`;
+            });
+            listHtml += '</div>';
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Tiket Berhasil Dibuat!',
+                html: `${json.message}<br>${listHtml}`,
+                confirmButtonText: 'Selesai & Muat Ulang',
+                confirmButtonColor: '#16A34A',
+            });
+            window.location.reload();
+        } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: json.message || 'Terjadi kesalahan sistem.' });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan atau server.' });
+    }
+}
+
+// ── Format Helper untuk Lokasi & Toko ─────────────
+function formatLocationTitle(str) {
+    if (!str) return '';
+    const acronyms = ['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'GRAGE', 'CIWALK'];
+    return str.trim().split(/[\s_-]+/).map(w => {
+        const up = w.toUpperCase();
+        if (acronyms.includes(up)) return up;
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }).join(' ');
+}
+
+// ── Share Offline (Text) ─────────────────────────
+function shareOfflineText() {
+    const checkboxes = Array.from(document.querySelectorAll('.offline-toggle'));
+    const offlineCheckboxes = checkboxes.filter(cb => cb.checked);
+
+    const dateStr = '{{ \Carbon\Carbon::parse($today)->format("m/d/y") }}';
+
+    const listOffline = [];
+    const listCctvStore = [];
+    const listCctvMoka = [];
+    const listCctvGame = [];
+
+    const pushUnique = (arr, val) => {
+        if (val && !arr.includes(val)) arr.push(val);
+    };
+
+    offlineCheckboxes.forEach(cb => {
+        const type        = (cb.dataset.deviceType || '').toLowerCase();
+        const alias       = (cb.dataset.deviceAlias || '').trim();
+        const aliasLower  = alias.toLowerCase();
+        const storeName   = (cb.dataset.storeName || '').trim();
+        const storeBranch = (cb.dataset.storeBranch || '').trim();
+        const notes       = (cb.dataset.notes || '').trim();
+        const channels    = (cb.dataset.channels || '').trim();
+
+        // 1. CCTV Game
+        if (aliasLower.includes('game')) {
+            let loc = storeBranch || alias;
+            loc = loc.replace(/\b(cctv|games?|channel\s*\d+|kamera|camera)\b/gi, '').trim();
+            let locFormatted = loc.split(/[\s_-]+/).map(w => {
+                const up = w.toUpperCase();
+                if (['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(up)) return up;
+                return w.toLowerCase();
+            }).join(' ').trim();
+            pushUnique(listCctvGame, `- game ${locFormatted}`);
+        }
+        // 2. CCTV Moka
+        else if (aliasLower.includes('moka') || aliasLower.includes('kasir')) {
+            let loc = storeBranch || alias;
+            loc = loc.replace(/\b(cctv|moka(pos)?|channel\s*\d+|kamera|camera)\b/gi, '').trim();
+            let locFormatted = loc.split(/[\s_-]+/).map(w => {
+                const up = w.toUpperCase();
+                if (['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(up)) return up;
+                return w.toLowerCase();
+            }).join(' ').trim();
+            pushUnique(listCctvMoka, `- Moka ${locFormatted}`);
+        }
+        // 3. NVR / DVR / Modem / Router (List Offline utama)
+        else if (['nvr', 'dvr', 'modem', 'router'].includes(type) || aliasLower.includes('modem') || aliasLower.includes('router')) {
+            let storeLabel = '';
+            const cleanBranch = formatLocationTitle(storeBranch);
+            const aliasUpper = alias.toUpperCase();
+            const branchUpper = storeBranch.toUpperCase();
+
+            if (aliasUpper.startsWith('HS ') || storeName.toUpperCase().includes('HEAVEN SCENT')) {
+                if (['SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(branchUpper)) {
+                    storeLabel = 'HS ' + branchUpper;
+                } else if (!cleanBranch.toUpperCase().startsWith('HS ')) {
+                    if (aliasUpper.startsWith('HS ')) {
+                        storeLabel = 'HS ' + cleanBranch;
+                    } else {
+                        storeLabel = cleanBranch || alias;
+                    }
+                } else {
+                    storeLabel = cleanBranch;
+                }
+            } else {
+                storeLabel = cleanBranch || alias;
+            }
+
+            let extraNote = '';
+            if (notes) {
+                extraNote = ` (${notes})`;
+            } else if (type === 'modem' || type === 'router' || aliasLower.includes('modem') || aliasLower.includes('simcard')) {
+                extraNote = ' (Modem / SIMCARD)';
+            }
+
+            pushUnique(listOffline, `- ${storeLabel}${extraNote}`);
+        }
+        // 4. CCTV Store Offline (regular store camera / channels)
+        else {
+            let camPart = '';
+            if (channels) {
+                camPart = channels.toUpperCase().startsWith('CAM') ? `(${channels.toUpperCase()})` : `(CAM ${channels})`;
+            } else {
+                const m = alias.match(/(?:channel|cam(?:era)?)\s*(\d+)/i);
+                if (m) {
+                    camPart = `(CAM ${m[1]})`;
+                } else {
+                    camPart = `(${alias})`;
+                }
+            }
+
+            let storeLabel = formatLocationTitle(storeBranch) || formatLocationTitle(storeName);
+            if (alias.toUpperCase().startsWith('HS ') && !storeLabel.toUpperCase().startsWith('HS ')) {
+                storeLabel = 'HS ' + storeLabel;
+            }
+
+            pushUnique(listCctvStore, `- ${storeLabel} ${camPart}`);
+        }
+    });
+
+    const sections = [];
+
+    if (listOffline.length > 0) {
+        sections.push(`list offline ${dateStr}\n` + listOffline.join('\n'));
+    }
+    if (listCctvStore.length > 0) {
+        sections.push(`list cctv store offline ${dateStr}\n` + listCctvStore.join('\n'));
+    }
+    if (listCctvMoka.length > 0) {
+        sections.push(`list cctv moka offline ${dateStr}\n` + listCctvMoka.join('\n'));
+    }
+    if (listCctvGame.length > 0) {
+        sections.push(`list cctv game offline ${dateStr}\n` + listCctvGame.join('\n'));
+    }
+
+    let fullText = sections.join('\n\n');
+
+    if (!fullText) {
+        fullText = `list offline ${dateStr}\n- Semua perangkat online / OK`;
+    }
+
+    // Salin ke Clipboard & Tampilkan Konfirmasi
+    // navigator.clipboard hanya tersedia di HTTPS atau localhost.
+    // Di HTTP biasa, clipboard undefined sehingga perlu fallback manual.
+    const showManualCopy = () => {
+        Swal.fire({
+            title: 'Ringkasan Offline',
+            html: `
+                <div style="font-size:13px; color:#4B5563; margin-bottom:10px; text-align:left;">
+                    Silakan salin teks di bawah ini:
+                </div>
+                <textarea id="copy-summary-area" style="width:100%; height:240px; font-family:monospace; font-size:12.5px; padding:10px; border:1px solid #D1D5DB; border-radius:6px; background:#F9FAFB; resize:vertical; line-height:1.5;">${fullText}</textarea>
+            `,
+            icon: 'info',
+            confirmButtonText: 'Tutup',
+            didOpen: () => {
+                const area = document.getElementById('copy-summary-area');
+                if (area) {
+                    area.select();
+                    area.focus();
+                }
+            }
+        });
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullText).then(() => {
+            Swal.fire({
+                title: 'Berhasil Disalin!',
+                html: `
+                    <div style="font-size:13px; color:#4B5563; margin-bottom:10px; text-align:left;">
+                        Teks ringkasan telah disalin ke clipboard dan siap di-paste ke WhatsApp:
+                    </div>
+                    <textarea id="copy-summary-area" readonly style="width:100%; height:240px; font-family:monospace; font-size:12.5px; padding:10px; border:1px solid #D1D5DB; border-radius:6px; background:#F9FAFB; resize:vertical; line-height:1.5;">${fullText}</textarea>
+                `,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Salin Ulang',
+                cancelButtonText: 'Tutup',
+                confirmButtonColor: '#2563EB',
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const area = document.getElementById('copy-summary-area');
+                    if (area) {
+                        area.select();
+                        navigator.clipboard.writeText(area.value).catch(() => {
+                            document.execCommand('copy');
+                        });
+                    }
+                }
+            });
+        }).catch(showManualCopy);
+    } else {
+        // Fallback untuk HTTP / browser tanpa Clipboard API
+        showManualCopy();
+    }
+}
+
+// Auto-save setiap 60 detik jika ada perubahan
+setInterval(() => {
+    document.querySelectorAll('.offline-toggle').forEach(cb => {
+        fetch('{{ route("daily-check.save-items") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            body: JSON.stringify({ items: [{ id: parseInt(cb.dataset.item), is_offline: cb.checked }] }),
+        });
+    });
+}, 60000);
 </script>
 @endpush
