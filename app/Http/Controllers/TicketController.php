@@ -349,10 +349,21 @@ class TicketController extends Controller
     }
 
     /**
-     * Kembalikan tiket pada tanggal tertentu dalam format JSON untuk fitur Share Text.
+     * Kembalikan tiket pada tanggal tertentu atau semua tiket Open dalam format JSON untuk fitur Share Text.
      */
     public function shareText(Request $request)
     {
+        if ($request->boolean('all_open') || $request->input('scope') === 'all_open') {
+            $tickets = Ticket::where('status', '!=', 'Closed')
+                ->orderBy('prioritas', 'asc')
+                ->orderBy('nomor_tiket', 'asc')
+                ->get(['nomor_tiket', 'tanggal_kejadian', 'nama_pelapor', 'divisi_toko',
+                       'kategori', 'prioritas', 'deskripsi_kendala', 'status', 'pic',
+                       'tindakan_dilakukan', 'solusi_diberikan']);
+
+            return response()->json(['tickets' => $tickets, 'mode' => 'all_open']);
+        }
+
         $request->validate(['date' => 'required|date_format:Y-m-d']);
 
         $tickets = Ticket::whereDate('tanggal_kejadian', $request->date)
@@ -362,7 +373,7 @@ class TicketController extends Controller
                    'kategori', 'prioritas', 'deskripsi_kendala', 'status', 'pic',
                    'tindakan_dilakukan', 'solusi_diberikan']);
 
-        return response()->json(['tickets' => $tickets]);
+        return response()->json(['tickets' => $tickets, 'mode' => 'date']);
     }
 
     public function destroy(Ticket $ticket)

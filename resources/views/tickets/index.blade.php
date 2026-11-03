@@ -15,7 +15,7 @@
             class="btn btn-secondary btn-sm"
             style="display:inline-flex; align-items:center; gap:6px;"
             onclick="shareTicketText()"
-            title="Salin ringkasan tiket per tanggal ke clipboard"
+            title="Salin ringkasan tiket (per tanggal / semua open ticket) ke clipboard"
         >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Share Text
@@ -316,40 +316,124 @@ function deleteTicket(id, nomor) {
 
 // ── Share Ticket Text ──────────────────────────────
 async function shareTicketText() {
-    // Step 1: Minta user pilih tanggal
+    // Step 1: Minta user pilih mode & tanggal
     const today = new Date().toISOString().split('T')[0];
-    const { value: selectedDate, isConfirmed } = await Swal.fire({
-        title: 'Pilih Tanggal Tiket',
+    const { value: selectedOption, isConfirmed } = await Swal.fire({
+        title: 'Pilih Ringkasan Tiket',
         html: `
-            <div style="font-size:13px;color:#4B5563;margin-bottom:12px;text-align:left;">
-                Pilih tanggal untuk merangkum tiket yang akan dibagikan:
+            <div style="font-size:13px;color:#4B5563;margin-bottom:14px;text-align:left;">
+                Pilih cakupan tiket yang akan dirangkum dan disalin ke clipboard:
             </div>
-            <input
-                type="date"
-                id="swal-ticket-date"
-                value="${today}"
-                max="${today}"
-                style="width:100%;padding:8px 12px;border:1px solid #D1D5DB;border-radius:6px;font-size:14px;outline:none;"
-            >
+            <div style="display:flex;flex-direction:column;gap:10px;text-align:left;">
+                <!-- Opsi 1: Berdasarkan Tanggal Tertentu -->
+                <div id="swal-opt-date" style="border:1.5px solid #2563EB;background:#EFF6FF;border-radius:8px;padding:10px 12px;cursor:pointer;transition:all 0.15s ease;">
+                    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0;">
+                        <input type="radio" name="swal_share_mode" id="swal-mode-date" value="date" checked style="margin-top:3px;accent-color:#2563EB;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:13px;color:#1F2937;">Berdasarkan Tanggal Tertentu</div>
+                            <div style="font-size:12px;color:#6B7280;margin:2px 0 8px 0;">Hanya merangkum tiket pada tanggal yang dipilih</div>
+                            <input
+                                type="date"
+                                id="swal-ticket-date"
+                                value="${today}"
+                                max="${today}"
+                                style="width:100%;padding:7px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;outline:none;background:#FFFFFF;box-sizing:border-box;"
+                            >
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Opsi 2: Semua Open Ticket -->
+                <div id="swal-opt-all" style="border:1px solid #E5E7EB;background:#FFFFFF;border-radius:8px;padding:10px 12px;cursor:pointer;transition:all 0.15s ease;">
+                    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0;">
+                        <input type="radio" name="swal_share_mode" id="swal-mode-all" value="all_open" style="margin-top:3px;accent-color:#2563EB;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:13px;color:#1F2937;">Semua Open Ticket</div>
+                            <div style="font-size:12px;color:#6B7280;margin-top:2px;">Rangkum semua tiket yang belum selesai (Open & Eskalasi) tanpa memandang tanggal</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
         `,
         icon: 'info',
         showCancelButton: true,
         confirmButtonText: 'Lanjut',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#2563EB',
+        didOpen: () => {
+            const radioDate = document.getElementById('swal-mode-date');
+            const radioAll  = document.getElementById('swal-mode-all');
+            const cardDate  = document.getElementById('swal-opt-date');
+            const cardAll   = document.getElementById('swal-opt-all');
+            const inputDate = document.getElementById('swal-ticket-date');
+
+            function syncSelection() {
+                const isAll = radioAll && radioAll.checked;
+                if (isAll) {
+                    cardAll.style.borderColor = '#2563EB';
+                    cardAll.style.background = '#EFF6FF';
+                    cardDate.style.borderColor = '#E5E7EB';
+                    cardDate.style.background = '#FFFFFF';
+                    if (inputDate) {
+                        inputDate.disabled = true;
+                        inputDate.style.opacity = '0.45';
+                        inputDate.style.cursor = 'not-allowed';
+                    }
+                } else {
+                    cardDate.style.borderColor = '#2563EB';
+                    cardDate.style.background = '#EFF6FF';
+                    cardAll.style.borderColor = '#E5E7EB';
+                    cardAll.style.background = '#FFFFFF';
+                    if (inputDate) {
+                        inputDate.disabled = false;
+                        inputDate.style.opacity = '1';
+                        inputDate.style.cursor = 'auto';
+                    }
+                }
+            }
+
+            cardDate?.addEventListener('click', (e) => {
+                if (e.target !== inputDate) {
+                    radioDate.checked = true;
+                    syncSelection();
+                }
+            });
+
+            cardAll?.addEventListener('click', () => {
+                radioAll.checked = true;
+                syncSelection();
+            });
+
+            radioDate?.addEventListener('change', syncSelection);
+            radioAll?.addEventListener('change', syncSelection);
+
+            inputDate?.addEventListener('focus', () => {
+                radioDate.checked = true;
+                syncSelection();
+            });
+        },
         preConfirm: () => {
-            const d = document.getElementById('swal-ticket-date').value;
-            if (!d) { Swal.showValidationMessage('Harap pilih tanggal.'); return false; }
-            return d;
+            const isAll = document.getElementById('swal-mode-all')?.checked;
+            if (isAll) {
+                return { mode: 'all_open' };
+            }
+            const d = document.getElementById('swal-ticket-date')?.value;
+            if (!d) {
+                Swal.showValidationMessage('Harap pilih tanggal.');
+                return false;
+            }
+            return { mode: 'date', date: d };
         }
     });
 
-    if (!isConfirmed || !selectedDate) return;
+    if (!isConfirmed || !selectedOption) return;
 
     // Step 2: Fetch tiket dari server
     let tickets = [];
+    const isAllOpen = selectedOption.mode === 'all_open';
+    const query = isAllOpen ? 'all_open=1' : `date=${selectedOption.date}`;
     try {
-        const resp = await fetch(`{{ route('tickets.share-text') }}?date=${selectedDate}`, {
+        const resp = await fetch(`{{ route('tickets.share-text') }}?${query}`, {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
         });
         const json = await resp.json();
@@ -360,7 +444,8 @@ async function shareTicketText() {
     }
 
     // Step 3: Format teks bergaya Daily Check
-    const [yyyy, mm, dd] = selectedDate.split('-');
+    const targetDate = isAllOpen ? today : selectedOption.date;
+    const [yyyy, mm, dd] = targetDate.split('-');
     const dateLabel  = `${mm}/${dd}/${yyyy}`;          // e.g. 10/21/2026
     const dateShort  = `${mm}/${dd}/${yyyy.slice(2)}`; // e.g. 10/21/26
 
@@ -408,10 +493,16 @@ async function shareTicketText() {
     });
 
     let fullText = '';
-    if (openTickets.length === 0 && tickets.length === 0) {
-        fullText = `Open Ticket From ${dateLabel}\n\nTidak ada tiket pada tanggal ini.`;
-    } else if (openTickets.length === 0) {
-        fullText = `Open Ticket From ${dateLabel}\n\nSemua tiket pada tanggal ini sudah Closed.`;
+    const headerTitle = isAllOpen ? 'Open Ticket (Semua Open Ticket)' : `Open Ticket From ${dateLabel}`;
+
+    if (openTickets.length === 0) {
+        if (isAllOpen) {
+            fullText = `${headerTitle}\n\nTidak ada tiket dengan status Open/Eskalasi saat ini.`;
+        } else if (tickets.length === 0) {
+            fullText = `${headerTitle}\n\nTidak ada tiket pada tanggal ini.`;
+        } else {
+            fullText = `${headerTitle}\n\nSemua tiket pada tanggal ini sudah Closed.`;
+        }
     } else {
         const sections = [];
         if (listNvrModem.length > 0)  sections.push(`list nvr/modem store offline ${dateShort}\n${listNvrModem.join('\n')}`);
@@ -419,13 +510,18 @@ async function shareTicketText() {
         if (listCctvMoka.length > 0)  sections.push(`list cctv moka offline ${dateShort}\n${listCctvMoka.join('\n')}`);
         if (listCctvGame.length > 0)  sections.push(`list cctv game offline ${dateShort}\n${listCctvGame.join('\n')}`);
 
-        fullText = `Open Ticket From ${dateLabel}\n\n` + sections.join('\n\n');
+        fullText = `${headerTitle}\n\n` + sections.join('\n\n');
     }
 
     // Step 4: Salin ke clipboard
+    const modalTitle = isAllOpen ? 'Semua Open Ticket' : `Open Ticket — ${dateLabel}`;
+    const copySuccessDesc = isAllOpen
+        ? 'Ringkasan <strong>Semua Open Ticket</strong> telah disalin ke clipboard dan siap di-paste ke WhatsApp.'
+        : `Ringkasan tiket <strong>${dateLabel}</strong> telah disalin ke clipboard dan siap di-paste ke WhatsApp.`;
+
     const showManualCopy = () => {
         Swal.fire({
-            title: `Open Ticket — ${dateLabel}`,
+            title: modalTitle,
             html: `
                 <div style="font-size:13px;color:#4B5563;margin-bottom:10px;text-align:left;">
                     Silakan salin teks di bawah ini:
@@ -447,7 +543,7 @@ async function shareTicketText() {
                 title: 'Berhasil Disalin!',
                 html: `
                     <div style="font-size:13px;color:#4B5563;margin-bottom:10px;text-align:left;">
-                        Ringkasan tiket <strong>${dateLabel}</strong> telah disalin ke clipboard dan siap di-paste ke WhatsApp.
+                        ${copySuccessDesc}
                     </div>
                     <textarea id="swal-copy-area" readonly style="width:100%;height:280px;font-family:monospace;font-size:12.5px;padding:10px;border:1px solid #D1D5DB;border-radius:6px;background:#F9FAFB;resize:vertical;line-height:1.6;">${fullText}</textarea>
                 `,

@@ -137,8 +137,13 @@
 
             {{-- Previews --}}
             <div id="upload-preview-grid" style="display:none;margin-top:14px;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;" id="preview-count-label">
-                    Gambar Terpilih (0/3):
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-secondary);" id="preview-count-label">
+                        Gambar Terpilih (0/3):
+                    </div>
+                    <button type="button" id="btn-add-more" class="btn btn-secondary" style="font-size:11.5px;padding:4px 10px;height:auto;" onclick="document.getElementById('image-input').click()">
+                        + Tambah Foto Lain
+                    </button>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:12px;" id="preview-container"></div>
             </div>
@@ -457,6 +462,7 @@ const analyzeStatus     = document.getElementById('analyze-status');
 const uploadPreviewGrid = document.getElementById('upload-preview-grid');
 const previewContainer  = document.getElementById('preview-container');
 const previewCountLabel = document.getElementById('preview-count-label');
+const btnAddMore        = document.getElementById('btn-add-more');
 
 let selectedFiles = []; // Array of File objects (max 3)
 
@@ -560,13 +566,18 @@ function renderPreviews() {
     previewContainer.innerHTML = '';
     
     if (selectedFiles.length === 0) {
+        uploadZone.style.display = 'block';
         uploadPreviewGrid.style.display = 'none';
         btnAnalyze.disabled = true;
         analyzeCountBadge.textContent = '0';
         return;
     }
 
+    uploadZone.style.display = 'none';
     uploadPreviewGrid.style.display = 'block';
+    if (btnAddMore) {
+        btnAddMore.style.display = selectedFiles.length < 3 ? 'inline-flex' : 'none';
+    }
     previewCountLabel.textContent = `Gambar Terpilih (${selectedFiles.length}/3):`;
     analyzeCountBadge.textContent = selectedFiles.length;
     btnAnalyze.disabled = false;

@@ -75,15 +75,17 @@ class DocumentationChatService
             }
         }
 
-        // 1. Ambil kandidat tiket relevan dari DB (pencarian keyword sederhana)
-        $keywords = $this->extractKeywords($userQuestion);
-        $candidates = $this->searchTickets($keywords, $userQuestion);
+        // 1. Ambil kandidat tiket relevan & statistik dari DB
+        $keywords   = $this->extractKeywords($userQuestion);
+        $searchData = $this->searchTickets($keywords, $userQuestion);
+        $candidates = $searchData['candidates'];
+        $stats      = $searchData['stats'];
 
         // 2. Susun konteks tiket sebagai teks untuk dikirim ke Gemini
         $ticketContext = $this->buildTicketContext($candidates);
 
         // 3. Bangun prompt
-        $prompt = $this->buildPrompt($userQuestion, $ticketContext, $candidates, count($imageParts));
+        $prompt = $this->buildPrompt($userQuestion, $ticketContext, $candidates, $stats, count($imageParts));
 
         // 4. Kirim ke Gemini (multimodal jika ada gambar)
         $responseText = $this->callGemini($prompt, $imageParts);
@@ -93,40 +95,115 @@ class DocumentationChatService
     }
 
     /**
-     * Ekstrak kata kunci penting dari pertanyaan user.
+     * Ekstrak kata kunci penting dari pertanyaan user, buang kata hubung/stopword.
      */
     private function extractKeywords(string $question): array
     {
-        // Buang stopword umum bahasa Indonesia
-        $stopwords = ['yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'dengan', 'ini',
-                      'itu', 'ada', 'tidak', 'bisa', 'bagaimana', 'kenapa', 'mengapa',
-                      'apa', 'kapan', 'siapa', 'apakah', 'saya', 'kamu', 'kita',
-                      'cara', 'tolong', 'mohon', 'bantu', 'ingin', 'mau', 'perlu',
-                      'gimana', 'gimana', 'punya', 'sudah', 'belum', 'sedang'];
+        // Stopword umum bahasa Indonesia & kata tanya
+        $stopwords = [
+            'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'dengan', 'ini', 'itu',
+            'ada', 'tidak', 'bisa', 'bagaimana', 'kenapa', 'mengapa', 'apa',
+            'kapan', 'siapa', 'apakah', 'saya', 'kamu', 'kita', 'kami', 'mereka',
+            'cara', 'tolong', 'mohon', 'bantu', 'bantuan', 'ingin', 'mau', 'perlu',
+            'gimana', 'punya', 'sudah', 'belum', 'sedang', 'akan', 'lagi', 'terus',
+            'selalu', 'sering', 'pernah', 'terjadi', 'kendala', 'masalah', 'tiket',
+            'helpdesk', 'sistem', 'seperti', 'atau', 'pada', 'saat', 'ketika',
+            'kalau', 'jika', 'maka', 'tentang', 'seputar', 'kasus'
+        ];
 
-        $words = preg_split('/\s+/', strtolower($question));
-        return array_values(array_filter($words, function ($word) use ($stopwords) {
-            $clean = preg_replace('/[^a-z0-9]/', '', $word);
-            return strlen($clean) >= 3 && !in_array($clean, $stopwords);
-        }));
+        $words = preg_split('/[\s,\.\?\!\;\:\(\)\[\]\{\}\/\\\"\'\`\+]+/', strtolower($question));
+        $cleaned = [];
+        foreach ($words as $word) {
+            $w = trim(preg_replace('/[^a-z0-9]/', '', $word));
+            if (strlen($w) >= 2 && !in_array($w, $stopwords)) {
+                $cleaned[] = $w;
+            }
+        }
+
+        return array_values(array_unique($cleaned));
     }
 
     /**
-     * Cari tiket dari DB yang relevan berdasarkan keyword + fallback top recent closed.
+     * Cari tiket dari seluruh riwayat database (seluruh rentang waktu)
+     * Menggunakan sistem skoring relevansi multi-bobot (Weighted Relevance Ranking)
      *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return array{candidates: \Illuminate\Database\Eloquent\Collection, stats: array}
      */
-    private function searchTickets(array $keywords, string $question)
+    private function searchTickets(array $keywords, string $question): array
     {
-        $query = Ticket::select([
-            'id', 'nomor_tiket', 'tanggal_kejadian', 'divisi_toko',
-            'kategori', 'prioritas', 'deskripsi_kendala', 'dampak_operasional',
-            'status', 'tindakan_dilakukan', 'solusi_diberikan', 'root_cause',
-            'tanggal_penyelesaian',
-        ]);
+        // 1. Ringkasan statistik global seluruh data tiket
+        $totalTickets = Ticket::count();
+        $statusCounts = Ticket::selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
+        $categoryCounts = Ticket::selectRaw('kategori, count(*) as total')
+            ->groupBy('kategori')
+            ->pluck('total', 'kategori')
+            ->toArray();
+        $latestClosed = Ticket::where('status', 'Closed')->latest('tanggal_penyelesaian')->value('nomor_tiket');
 
+        $stats = [
+            'total'          => $totalTickets,
+            'open'           => $statusCounts['Open'] ?? 0,
+            'closed'         => $statusCounts['Closed'] ?? 0,
+            'eskalasi'       => $statusCounts['Eskalasi'] ?? 0,
+            'categories'     => $categoryCounts,
+            'latest_closed'  => $latestClosed,
+        ];
+
+        $lowerQ = strtolower($question);
+        $checkOpenOnly = str_contains($lowerQ, 'open') || str_contains($lowerQ, 'terbuka') || str_contains($lowerQ, 'belum selesai');
+
+        // Jika pertanyaan spesifik meminta status Open/Eskalasi
+        if ($checkOpenOnly) {
+            $candidates = Ticket::select([
+                'id', 'nomor_tiket', 'tanggal_kejadian', 'divisi_toko',
+                'kategori', 'prioritas', 'deskripsi_kendala', 'dampak_operasional',
+                'status', 'tindakan_dilakukan', 'solusi_diberikan', 'root_cause',
+                'tanggal_penyelesaian',
+            ])
+            ->whereIn('status', ['Open', 'Eskalasi'])
+            ->orderByDesc('tanggal_kejadian')
+            ->limit(30)
+            ->get();
+
+            return ['candidates' => $candidates, 'stats' => $stats];
+        }
+
+        // 2. Jika ada kata kunci: Cari di SELURUH riwayat tanpa batas tanggal
         if (!empty($keywords)) {
-            $query->where(function ($q) use ($keywords) {
+            // Bangun ekspresi skoring relevansi:
+            // Solusi/Root Cause/Tindakan yang ada kata kunci diberi bobot tinggi
+            // Kategori dan nama toko/divisi diberi bobot pendukung
+            $scoreParts = [];
+            $bindings   = [];
+
+            foreach ($keywords as $kw) {
+                $kwParam = "%{$kw}%";
+                // Bobot 5 jika kata kunci cocok di solusi atau root_cause (sangat berharga untuk pemecahan masalah)
+                $scoreParts[] = "(CASE WHEN LOWER(solusi_diberikan) LIKE ? THEN 5 ELSE 0 END)";
+                $scoreParts[] = "(CASE WHEN LOWER(root_cause) LIKE ? THEN 5 ELSE 0 END)";
+                // Bobot 4 jika cocok di deskripsi kendala / tindakan
+                $scoreParts[] = "(CASE WHEN LOWER(deskripsi_kendala) LIKE ? THEN 4 ELSE 0 END)";
+                $scoreParts[] = "(CASE WHEN LOWER(tindakan_dilakukan) LIKE ? THEN 3 ELSE 0 END)";
+                // Bobot 3 jika cocok di kategori atau divisi / toko
+                $scoreParts[] = "(CASE WHEN LOWER(kategori) LIKE ? THEN 3 ELSE 0 END)";
+                $scoreParts[] = "(CASE WHEN LOWER(divisi_toko) LIKE ? THEN 3 ELSE 0 END)";
+
+                array_push($bindings, $kwParam, $kwParam, $kwParam, $kwParam, $kwParam, $kwParam);
+            }
+
+            $scoreRaw = implode(' + ', $scoreParts);
+
+            $matchedTickets = Ticket::select([
+                'id', 'nomor_tiket', 'tanggal_kejadian', 'divisi_toko',
+                'kategori', 'prioritas', 'deskripsi_kendala', 'dampak_operasional',
+                'status', 'tindakan_dilakukan', 'solusi_diberikan', 'root_cause',
+                'tanggal_penyelesaian',
+            ])
+            ->selectRaw("({$scoreRaw}) as relevance_score", $bindings)
+            ->where(function ($q) use ($keywords) {
                 foreach ($keywords as $kw) {
                     $q->orWhere('deskripsi_kendala', 'like', "%{$kw}%")
                       ->orWhere('solusi_diberikan', 'like', "%{$kw}%")
@@ -135,32 +212,41 @@ class DocumentationChatService
                       ->orWhere('kategori', 'like', "%{$kw}%")
                       ->orWhere('divisi_toko', 'like', "%{$kw}%");
                 }
-            });
-        }
-
-        $results = $query->orderByRaw("CASE WHEN status = 'Closed' THEN 0 ELSE 1 END")
-                         ->orderBy('tanggal_kejadian', 'desc')
-                         ->limit(20)
-                         ->get();
-
-        // Jika hasil terlalu sedikit, tambahkan tiket Closed terbaru sebagai konteks fallback
-        if ($results->count() < 5) {
-            $fallback = Ticket::select([
-                'id', 'nomor_tiket', 'tanggal_kejadian', 'divisi_toko',
-                'kategori', 'prioritas', 'deskripsi_kendala', 'dampak_operasional',
-                'status', 'tindakan_dilakukan', 'solusi_diberikan', 'root_cause',
-                'tanggal_penyelesaian',
-            ])
-            ->where('status', 'Closed')
-            ->whereNotIn('id', $results->pluck('id'))
-            ->orderBy('tanggal_penyelesaian', 'desc')
-            ->limit(10)
+            })
+            // Utamakan relevansi kesesuaian kasus di atas segalanya (bukan sekadar tanggal baru)
+            ->having('relevance_score', '>', 0)
+            ->orderByDesc('relevance_score')
+            ->orderByDesc('tanggal_kejadian')
+            ->limit(25)
             ->get();
 
-            $results = $results->merge($fallback)->take(20);
+            // Jika ditemukan tiket yang relevan dari riwayat manapun, kembalikan langsung
+            if ($matchedTickets->isNotEmpty()) {
+                return [
+                    'candidates' => $matchedTickets,
+                    'stats'      => $stats,
+                ];
+            }
         }
 
-        return $results;
+        // 3. Fallback jika pertanyaan sangat abstrak / tidak ada kata kunci cocok sama sekali:
+        // Ambil tiket sampel beragam (tiket dengan solusi terlengkap dari berbagai kategori)
+        $diverseSample = Ticket::select([
+            'id', 'nomor_tiket', 'tanggal_kejadian', 'divisi_toko',
+            'kategori', 'prioritas', 'deskripsi_kendala', 'dampak_operasional',
+            'status', 'tindakan_dilakukan', 'solusi_diberikan', 'root_cause',
+            'tanggal_penyelesaian',
+        ])
+        ->whereNotNull('solusi_diberikan')
+        ->where('solusi_diberikan', '!=', '')
+        ->orderByDesc('id')
+        ->limit(20)
+        ->get();
+
+        return [
+            'candidates' => $diverseSample,
+            'stats'      => $stats,
+        ];
     }
 
     /**
@@ -169,7 +255,7 @@ class DocumentationChatService
     private function buildTicketContext($tickets): string
     {
         if ($tickets->isEmpty()) {
-            return 'Tidak ada data tiket yang tersedia saat ini.';
+            return 'Tidak ada data tiket spesifik yang ditemukan.';
         }
 
         $lines = [];
@@ -197,19 +283,29 @@ class DocumentationChatService
     }
 
     /**
-     * Bangun prompt lengkap untuk Gemini.
+     * Bangun prompt lengkap untuk Gemini agar dapat menjawab luas & analitis.
      */
-    private function buildPrompt(string $question, string $context, $tickets, int $imageCount = 0): string
+    private function buildPrompt(string $question, string $context, $tickets, array $stats, int $imageCount = 0): string
     {
         $ticketIds = $tickets->pluck('nomor_tiket')->implode(', ');
         $imageNote = $imageCount > 0
-            ? "Catatan: Pengguna juga melampirkan {$imageCount} gambar/tangkapan layar percakapan WhatsApp atau pesan kendala. Analisis teks dan percakapan di dalam gambar tersebut untuk memahami kendala yang dilaporkan."
+            ? "Catatan: Pengguna juga melampirkan {$imageCount} gambar/tangkapan layar (WhatsApp/pesan/foto kendala). Analisis pesan dan detail visual di dalam gambar tersebut untuk memahami kendala secara mendalam."
             : '';
 
-        return <<<PROMPT
-Kamu adalah asisten IT Helpdesk internal yang bertugas menjawab pertanyaan staf berdasarkan riwayat tiket IT yang sudah pernah dicatat dalam sistem.
+        $statsText = "Ringkasan Sistem Tiket Saat Ini:\n"
+            . "- Total Seluruh Tiket: {$stats['total']}\n"
+            . "- Status Open: {$stats['open']}\n"
+            . "- Status Closed: {$stats['closed']}\n"
+            . "- Status Eskalasi: {$stats['eskalasi']}\n"
+            . "- Distribusi Kategori: " . json_encode($stats['categories'], JSON_UNESCAPED_UNICODE);
 
-Berikut adalah data tiket IT yang relevan dari database (masing-masing baris adalah satu tiket):
+        return <<<PROMPT
+Kamu adalah Asisten AI IT Helpdesk & Konsultan Teknis senior internal (Go Note IT).
+Tugas utamamu adalah membantu staf IT dan karyawan memahami permasalahan operasional/teknis, riwayat tiket, solusi, tren kendala, hingga memberikan panduan troubleshooting dan pencegahan.
+
+{$statsText}
+
+Berikut adalah data riwayat tiket IT yang relevan dari database (masing-masing baris adalah satu tiket):
 ---
 {$context}
 ---
@@ -219,20 +315,23 @@ Nomor tiket yang tersedia untuk dijadikan sitasi: {$ticketIds}
 Pertanyaan staf: "{$question}"
 {$imageNote}
 
-Tugasmu:
-1. Jawab pertanyaan tersebut berdasarkan data tiket yang diberikan di atas serta informasi dari gambar lampiran jika ada.
-2. Jika ada tiket yang relevan, sebutkan nomor tiketnya sebagai sitasi.
-3. Jika tidak ada tiket yang relevan sama sekali, jawab dengan jujur bahwa belum ada riwayat serupa.
-4. Gunakan Bahasa Indonesia yang ramah dan mudah dipahami.
-5. Berikan solusi atau langkah penanganan jika tersedia dari data tiket.
+Pedoman Menjawab (Jawab secara LUAS, AKURAT, dan SOLUTIF):
+1. **Analisis Pertanyaan**:
+   - Jika staf menanyakan status atau rekap tiket (misal "berapa tiket open", "kendala paling sering", "status cabang X"): Berikan jawaban presisi berdasarkan 'Ringkasan Sistem Tiket' dan data tiket. Jangan membatasi jawaban hanya pada 1 kategori jika pertanyaannya umum.
+   - Jika staf menanyakan kendala atau error tertentu (misal POS macet, CCTV mati, scanner error, printer mati):
+     a. Tinjau riwayat tiket di atas. Jika pernah terjadi sebelumnya, jelaskan bagaimana kendala itu diselesaikan saat itu (sebutkan nomor tiketnya).
+     b. Berikan wawasan troubleshooting teknis yang mendalam dan langkah preventif agar kendala serupa tidak terulang, bahkan jika di riwayat hanya tertulis langkah singkat.
+   - Jika staf berkonsultasi mengenai teknis IT, best practice, atau solusi umum: Berikan penjelasan teknis yang profesional, ramah, terstruktur, dan aplikatif.
+2. **Sitasi Tiket**:
+   - Cantumkan nomor tiket di daftar "citations" jika dan hanya jika tiket tersebut memang relevan dijadikan contoh atau rujukan. Jika menanyakan rekap umum, jangan menumpuk nomor tiket yang tidak perlu di dalam teks penjelasan, cukup sertakan tiket penting di "citations".
+3. **Gaya Komunikasi**:
+   - Bahasa Indonesia profesional, ramah, jelas, dan rapi menggunakan formatting markdown (seperti bullet points, bold untuk istilah penting, atau langkah bernomor 1, 2, 3).
 
-Kembalikan respons HANYA dalam format JSON murni (tanpa markdown, tanpa ```json):
+Kembalikan respons HANYA dalam format JSON murni (tanpa markdown blok ```json):
 {
-  "answer": "<jawaban lengkap dalam Bahasa Indonesia, boleh menggunakan markdown ringan seperti **bold** atau bullet - >",
+  "answer": "<jawaban lengkap, rapi, dan mudah dibaca>",
   "citations": ["<nomor_tiket_1>", "<nomor_tiket_2>"]
 }
-
-Kolom "citations" hanya berisi nomor tiket yang benar-benar relevan dan kamu jadikan referensi dalam jawaban. Boleh kosong array [] jika tidak ada.
 PROMPT;
     }
 
@@ -255,8 +354,8 @@ PROMPT;
                 ['parts' => $parts],
             ],
             'generationConfig' => [
-                'temperature'     => 0.3,
-                'maxOutputTokens' => 2048,
+                'temperature'     => 0.5,
+                'maxOutputTokens' => 2500,
             ],
         ]);
 
