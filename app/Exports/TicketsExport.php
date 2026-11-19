@@ -25,6 +25,7 @@ class TicketsExport implements FromQuery, WithMapping, WithCustomStartCell, With
             ->filterPrioritas($this->filters['prioritas'] ?? null)
             ->filterTanggal($this->filters['date_from'] ?? null, $this->filters['date_to'] ?? null)
             ->filterSearch($this->filters['search'] ?? null)
+            ->filterExclude($this->filters['exclude'] ?? null)
             ->oldest('tanggal_kejadian');
     }
 

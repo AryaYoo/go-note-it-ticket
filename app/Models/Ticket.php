@@ -120,6 +120,31 @@ class Ticket extends Model
             : $query;
     }
 
+    public function scopeFilterExclude(Builder $query, ?string $exclude): Builder
+    {
+        if (!$exclude) {
+            return $query;
+        }
+
+        // Pisahkan kata kunci jika pengguna memasukkan beberapa kata dipisah koma
+        $keywords = array_filter(array_map('trim', explode(',', $exclude)));
+
+        foreach ($keywords as $kw) {
+            if ($kw !== '') {
+                $query->whereNot(function ($q) use ($kw) {
+                    $q->where('nomor_tiket', 'like', "%{$kw}%")
+                      ->orWhere('nama_pelapor', 'like', "%{$kw}%")
+                      ->orWhere('divisi_toko', 'like', "%{$kw}%")
+                      ->orWhere('deskripsi_kendala', 'like', "%{$kw}%")
+                      ->orWhere('kategori', 'like', "%{$kw}%")
+                      ->orWhere('pic', 'like', "%{$kw}%");
+                });
+            }
+        }
+
+        return $query;
+    }
+
     // Helper labels
     public function statusBadgeClass(): string
     {

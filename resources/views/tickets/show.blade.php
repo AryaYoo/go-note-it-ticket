@@ -96,13 +96,13 @@
         </div>
         <div class="detail-field">
             <div class="detail-label">Deskripsi Kendala</div>
-            <div class="detail-value {{ $ticket->deskripsi_kendala ? '' : 'empty' }}">
+            <div class="detail-value {{ $ticket->deskripsi_kendala ? '' : 'empty' }}" style="white-space: pre-wrap;">
                 {{ $ticket->deskripsi_kendala ?? 'Belum diisi' }}
             </div>
         </div>
         <div class="detail-field">
             <div class="detail-label">Dampak Operasional</div>
-            <div class="detail-value {{ $ticket->dampak_operasional ? '' : 'empty' }}">
+            <div class="detail-value {{ $ticket->dampak_operasional ? '' : 'empty' }}" style="white-space: pre-wrap;">
                 {{ $ticket->dampak_operasional ?? 'Belum diisi' }}
             </div>
         </div>
@@ -119,7 +119,7 @@
         </div>
         <div class="detail-field">
             <div class="detail-label">Tindakan yang Dilakukan</div>
-            <div class="detail-value {{ $ticket->tindakan_dilakukan ? '' : 'empty' }}">
+            <div class="detail-value {{ $ticket->tindakan_dilakukan ? '' : 'empty' }}" style="white-space: pre-wrap;">
                 {{ $ticket->tindakan_dilakukan ?? 'Belum ada tindakan' }}
             </div>
         </div>
@@ -138,13 +138,13 @@
         </div>
         <div class="detail-field">
             <div class="detail-label">Solusi yang Diberikan</div>
-            <div class="detail-value {{ $ticket->solusi_diberikan ? '' : 'empty' }}">
+            <div class="detail-value {{ $ticket->solusi_diberikan ? '' : 'empty' }}" style="white-space: pre-wrap;">
                 {{ $ticket->solusi_diberikan ?? 'Belum ada solusi' }}
             </div>
         </div>
         <div class="detail-field">
             <div class="detail-label">Root Cause (Akar Masalah)</div>
-            <div class="detail-value {{ $ticket->root_cause ? '' : 'empty' }}">
+            <div class="detail-value {{ $ticket->root_cause ? '' : 'empty' }}" style="white-space: pre-wrap;">
                 {{ $ticket->root_cause ?? 'Belum diidentifikasi' }}
             </div>
         </div>

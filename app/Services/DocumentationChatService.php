@@ -356,6 +356,7 @@ PROMPT;
             'generationConfig' => [
                 'temperature'     => 0.5,
                 'maxOutputTokens' => 2500,
+                'responseMimeType' => 'application/json',
             ],
         ]);
 
@@ -447,13 +448,30 @@ PROMPT;
         $text = preg_replace('/```\s*/i', '', $text);
         $text = trim($text);
 
+        // Coba ekstrak JSON object dari dalam teks (kalau ada teks sebelum/sesudah {})
+        if (preg_match('/\{.*\}/su', $text, $m)) {
+            $text = $m[0];
+        }
+
         $parsed = json_decode($text, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !isset($parsed['answer'])) {
-            Log::warning('DocumentationChat: Gemini response tidak valid JSON', ['raw' => $rawText]);
-            // Fallback: kembalikan teks mentah sebagai jawaban tanpa sitasi
+            Log::warning('DocumentationChat: Gemini response tidak valid JSON', [
+                'raw'   => $rawText,
+                'error' => json_last_error_msg(),
+            ]);
+
+            // Fallback: kembalikan teks mentah tapi sudah diformat — bukan raw JSON
+            // Jika rawText sendiri adalah JSON string yang terparsial, coba ambil bagian answer-nya
+            $fallbackAnswer = $rawText ?: 'Maaf, tidak dapat memproses jawaban saat ini.';
+
+            // Jika fallback adalah raw JSON tak terparsing, tampilkan pesan friendly
+            if (str_starts_with(ltrim($fallbackAnswer), '{') || str_contains($fallbackAnswer, '"answer"')) {
+                $fallbackAnswer = 'Maaf, terjadi kesalahan saat memproses jawaban. Silakan coba lagi.';
+            }
+
             return [
-                'answer'    => $rawText ?: 'Maaf, tidak dapat memproses jawaban saat ini.',
+                'answer'    => $fallbackAnswer,
                 'citations' => [],
             ];
         }

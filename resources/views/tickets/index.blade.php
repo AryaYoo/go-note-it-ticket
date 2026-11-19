@@ -28,7 +28,7 @@
 </div>
 
 @php
-    $filterKeys = ['status', 'kategori', 'prioritas', 'date_from', 'date_to'];
+    $filterKeys = ['status', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude'];
     $activeFilterCount = collect($filterKeys)->filter(fn($k) => request()->filled($k))->count();
 @endphp
 
@@ -58,7 +58,7 @@
             @endif
         </button>
 
-        @if(request()->hasAny(['search', 'status', 'kategori', 'prioritas', 'date_from', 'date_to']))
+        @if(request()->hasAny(['search', 'status', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude']))
             <a href="{{ route('tickets.index') }}" class="btn btn-ghost btn-sm" title="Reset semua pencarian & filter">Reset</a>
         @endif
 
@@ -110,7 +110,7 @@
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group">
                         <label class="form-label">Rentang Tanggal Kejadian</label>
                         <div class="form-row form-row-2">
                             <div>
@@ -122,6 +122,12 @@
                                 <div class="form-hint">Sampai tanggal</div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Kecualikan Kata (Exclude)</label>
+                        <input type="text" name="exclude" class="form-input" placeholder="Contoh: CCTV, Moka (pisahkan koma)" value="{{ request('exclude') }}">
+                        <div class="form-hint">Tiket yang mengandung kata ini akan dikecualikan dari hasil</div>
                     </div>
                 </div>
 
@@ -140,6 +146,44 @@
         </div>
     </form>
 </div>
+
+{{-- Active Filter Pills --}}
+@if($activeFilterCount > 0)
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 12px;">
+    <span style="color: var(--muted); font-weight: 500;">Filter aktif:</span>
+    @if(request('status'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
+            Status: {{ request('status') }}
+            <a href="{{ route('tickets.index', request()->except('status')) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter status">✕</a>
+        </span>
+    @endif
+    @if(request('kategori'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
+            Kategori: {{ request('kategori') }}
+            <a href="{{ route('tickets.index', request()->except('kategori')) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter kategori">✕</a>
+        </span>
+    @endif
+    @if(request('prioritas'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
+            Prioritas: {{ request('prioritas') }}
+            <a href="{{ route('tickets.index', request()->except('prioritas')) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter prioritas">✕</a>
+        </span>
+    @endif
+    @if(request('date_from') || request('date_to'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
+            Tanggal: {{ request('date_from') ?: '...' }} s/d {{ request('date_to') ?: '...' }}
+            <a href="{{ route('tickets.index', request()->except(['date_from', 'date_to'])) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter tanggal">✕</a>
+        </span>
+    @endif
+    @if(request('exclude'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; font-weight: 500;">
+            Kecualikan: "{{ request('exclude') }}"
+            <a href="{{ route('tickets.index', request()->except('exclude')) }}" style="text-decoration: none; color: #DC2626; font-size: 11px; margin-left: 2px;" title="Hapus filter kecualikan">✕</a>
+        </span>
+    @endif
+    <a href="{{ route('tickets.index', request()->only('search')) }}" style="color: var(--muted); text-decoration: underline; font-size: 11.5px; margin-left: 4px;">Reset</a>
+</div>
+@endif
 
 {{-- Table --}}
 @if($tickets->isEmpty())

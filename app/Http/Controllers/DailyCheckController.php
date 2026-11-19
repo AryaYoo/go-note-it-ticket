@@ -330,32 +330,22 @@ class DailyCheckController extends Controller
         $storeName = $store ? ($store->name . ($store->branch ? ' — ' . $store->branch : '')) : 'Toko';
 
         $tanggalFormatted = Carbon::parse($tanggalKejadian)->translatedFormat('d F Y');
-        $jumlahDevice     = $items->count();
-        $perangkatLabel   = $jumlahDevice === 1 ? 'perangkat' : 'beberapa perangkat';
 
-        // Paragraf pembuka — naratif
-        $deskripsi  = "Saat pengecekan harian pada {$tanggalFormatted}, ditemukan {$perangkatLabel} dalam kondisi offline di {$storeName}.";
-        $deskripsi .= "\n\nBerikut rincian perangkat yang terdeteksi bermasalah:\n";
-
+        // Deskripsi singkat & to the point
+        $deviceLines = [];
         foreach ($items as $item) {
             $label = $item->device->alias ?: ($item->device->type . ($item->device->model ? ' ' . $item->device->model : ''));
-
-            $deskripsi .= "\n• {$label}";
-
-            if ($item->offline_since) {
-                $deskripsi .= " — offline sejak " . Carbon::parse($item->offline_since)->translatedFormat('d F Y, H:i') . " WIB";
-            }
-
+            $line  = "- {$label}";
             if ($item->affected_channels) {
-                $deskripsi .= "\n  Kanal/channel yang terdampak: " . $item->affected_channels . ".";
+                $line .= " ({$item->affected_channels})";
             }
-
             if ($item->notes) {
-                $deskripsi .= "\n  Catatan: " . $item->notes . ".";
+                $line .= " — {$item->notes}";
             }
+            $deviceLines[] = $line;
         }
 
-        $deskripsi .= "\n\nMohon segera ditindaklanjuti. Terima kasih.";
+        $deskripsi = "Offline saat pengecekan harian {$tanggalFormatted} di {$storeName}:\n" . implode("\n", $deviceLines);
 
         // Deteksi kategori, prioritas, dan tindakan berdasarkan device
         $hasCctv   = $items->contains(fn($i) => stripos($i->device->type ?? '', 'cctv') !== false || stripos($i->device->type ?? '', 'dvr') !== false || stripos($i->device->type ?? '', 'nvr') !== false || stripos($i->device->type ?? '', 'kamera') !== false);
@@ -376,8 +366,8 @@ class DailyCheckController extends Controller
                 $bestPrioritas = $suggestion['prioritas'];
             }
 
-            $tindakanParts[] = "• {$label}: " . $suggestion['tindakan'];
-            $dampakParts[]   = "• {$label}: " . $suggestion['dampak'];
+            $tindakanParts[] = "- {$label}: " . $suggestion['tindakan'];
+            $dampakParts[]   = "- {$label}: " . $suggestion['dampak'];
         }
 
         $tindakanDefault = implode("\n", $tindakanParts);
