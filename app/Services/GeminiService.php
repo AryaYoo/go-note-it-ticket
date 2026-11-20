@@ -133,6 +133,9 @@ Panduan kategori:
 - CCTV: masalah pada kamera pengawas CCTV, DVR/NVR, atau monitoring video
 - Lainnya: masalah jaringan, internet, atau lainnya
 
+Panduan tindakan untuk modem / internet:
+- Jika kendala terkait modem mati, offline, atau internet toko terputus, pastikan rekomendasi tindakan mencakup: isi ulang kuota modem / cek sisa paket data, lalu coba restart modem.
+
 Jika informasi tidak cukup untuk menentukan suatu field, gunakan nilai terbaik yang dapat kamu simpulkan dari konteks.
 PROMPT;
 

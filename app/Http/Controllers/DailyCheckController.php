@@ -407,6 +407,17 @@ class DailyCheckController extends Controller
         $isCctv  = in_array($type, ['cctv', 'camera', 'kamera']);
         $isMoka  = str_contains($alias, 'moka');
         $isGames = str_contains($alias, 'games') || str_contains($alias, 'game');
+        $isModem = str_contains($type, 'modem') || str_contains($type, 'router') || str_contains($alias, 'modem') || str_contains($alias, 'router');
+
+        // ── Modem / Router ─────────────────────────────────────────────────────
+        if ($isModem) {
+            $notes = $item->device->modem_notes ? " ({$item->device->modem_notes})" : '';
+            return [
+                'prioritas' => 'High',
+                'tindakan'  => "Isi ulang kuota modem{$notes}. Jika kuota masih ada, coba restart modem/router dan periksa kabel adaptor/WAN.",
+                'dampak'    => 'Koneksi internet toko offline karena kuota habis atau kendala modem. Seluruh perangkat yang bergantung pada jaringan online tidak dapat diakses.',
+            ];
+        }
 
         // ── NVR / DVR ──────────────────────────────────────────────────────────
         if ($isNvr) {
@@ -414,7 +425,7 @@ class DailyCheckController extends Controller
             $channelInfo = $channels ? ", terdampak pada {$channels}" : ' — seluruh channel kemungkinan mati';
             return [
                 'prioritas' => 'High',
-                'tindakan'  => 'Reset modem / cabut pasang kabel NVR (indikasi seluruh channel kamera mati serentak).',
+                'tindakan'  => 'Isi ulang kuota / cek modem, lalu coba restart modem atau cabut pasang kabel NVR (indikasi seluruh channel kamera mati serentak).',
                 'dampak'    => "Seluruh monitoring CCTV{$totalInfo} pada toko tidak dapat merekam{$channelInfo}. Keamanan toko terganggu.",
             ];
         }
@@ -453,15 +464,6 @@ class DailyCheckController extends Controller
                 'prioritas' => 'Medium',
                 'tindakan'  => 'Periksa kondisi fisik, koneksi daya, dan coba restart perangkat.',
                 'dampak'    => 'Perangkat komputer/laptop tidak dapat digunakan, aktivitas operasional yang bergantung pada perangkat ini terhenti sementara.',
-            ];
-        }
-
-        // ── Modem / Router ─────────────────────────────────────────────────────
-        if (str_contains($type, 'modem') || str_contains($type, 'router')) {
-            return [
-                'prioritas' => 'High',
-                'tindakan'  => 'Restart modem/router. Jika tidak berhasil, cek kabel WAN dan hubungi ISP.',
-                'dampak'    => 'Koneksi internet toko mati. Seluruh sistem yang bergantung pada jaringan (CCTV cloud, POS online, dll) tidak dapat beroperasi.',
             ];
         }
 
