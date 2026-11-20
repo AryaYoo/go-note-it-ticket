@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/managers', [\App\Http\Controllers\SuperAdminController::class, 'managers'])->name('managers');
         Route::post('/managers', [\App\Http\Controllers\SuperAdminController::class, 'storeManager'])->name('managers.store');
         Route::delete('/managers/{user}', [\App\Http\Controllers\SuperAdminController::class, 'destroyManager'])->name('managers.destroy');
+        Route::post('/managers/{user}/assign-staff', [\App\Http\Controllers\SuperAdminController::class, 'assignStaff'])->name('managers.assign-staff');
     });
 
     // Manager Routes

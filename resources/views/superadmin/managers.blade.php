@@ -158,13 +158,14 @@
             <tr>
                 <th>Manager</th>
                 <th>Perusahaan</th>
+                <th>Anggota Tim</th>
                 <th>Terdaftar Sejak</th>
                 <th style="text-align:right">Aksi</th>
             </tr>
         </thead>
         <tbody>
             @forelse($managers as $manager)
-            <tr>
+            <tr data-manager-id="{{ $manager->id }}" data-company-id="{{ $manager->company_id }}" data-staff-ids="{{ json_encode($manager->staff->pluck('id')->toArray()) }}">
                 <td>
                     <div class="user-chip">
                         <div class="user-chip-avatar">{{ strtoupper(substr($manager->name, 0, 1)) }}</div>
@@ -187,7 +188,23 @@
                     @endif
                 </td>
                 <td style="color: var(--muted); font-size: 12.5px;">{{ $manager->created_at->format('d M Y') }}</td>
-                <td style="text-align:right">
+                <td>
+                    @php $staffCount = $manager->staff->count(); @endphp
+                    <span style="font-size:13px; color:{{ $staffCount > 0 ? 'var(--text)' : 'var(--muted)' }}">
+                        {{ $staffCount }} anggota
+                    </span>
+                    @if($staffCount > 0)
+                        <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">
+                            {{ $manager->staff->pluck('name')->join(', ') }}
+                        </div>
+                    @endif
+                </td>
+                <td style="color: var(--muted); font-size: 12.5px;">{{ $manager->created_at->format('d M Y') }}</td>
+                <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+                    <button type="button" onclick="openAssignModal({{ $manager->id }}, '{{ addslashes($manager->name) }}')"
+                        style="padding:5px 10px; border:1px solid #d1d5db; border-radius:6px; background:#fff; font-size:12px; cursor:pointer; white-space:nowrap;">
+                        👥 Kelola Anggota
+                    </button>
                     <form method="POST" action="{{ route('superadmin.managers.destroy', $manager) }}"
                         onsubmit="return confirm('Hapus manager {{ addslashes($manager->name) }}?')" style="display:inline">
                         @csrf @method('DELETE')
@@ -204,7 +221,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <div class="sa-empty">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -297,5 +314,67 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
         mousedownOnBackdrop = false;
     });
 });
+
+// Assign staff modal
+const allStaffData = @json($allStaff);
+
+function openAssignModal(managerId, managerName) {
+    document.getElementById('assignManagerId').value = managerId;
+    document.getElementById('assignManagerName').textContent = managerName;
+    document.getElementById('assignStaffForm').action = '{{ url("superadmin/managers") }}/' + managerId + '/assign-staff';
+
+    // Ambil company_id manager dari data yang tersedia
+    const companyId = document.querySelector('[data-manager-id="' + managerId + '"]')?.dataset.companyId;
+    const currentStaffIds = JSON.parse(document.querySelector('[data-manager-id="' + managerId + '"]')?.dataset.staffIds || '[]');
+    const staffList = document.getElementById('assignStaffList');
+    staffList.innerHTML = '';
+
+    // Semua staff dalam semua company (atau filter by companyId jika tersedia)
+    let staffFound = false;
+    for (const [cId, staffArr] of Object.entries(allStaffData)) {
+        staffArr.forEach(function(s) {
+            staffFound = true;
+            const checked = currentStaffIds.includes(s.id) ? 'checked' : '';
+            staffList.innerHTML += `
+                <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb; margin-bottom:6px;">
+                    <input type="checkbox" name="staff_ids[]" value="${s.id}" ${checked} style="width:16px; height:16px; cursor:pointer;">
+                    <div>
+                        <div style="font-size:13px; font-weight:600;">${s.name}</div>
+                        <div style="font-size:11.5px; color:#6b7280;">${s.email}${s.divisi ? ' · ' + s.divisi : ''}</div>
+                    </div>
+                </label>`;
+        });
+    }
+    if (!staffFound) {
+        staffList.innerHTML = '<p style="color:#6b7280; font-size:13px; text-align:center;">Belum ada staff di perusahaan ini.</p>';
+    }
+
+    document.getElementById('assignStaffModal').style.display = 'flex';
+}
 </script>
+
+{{-- Modal Assign Staff --}}
+<div id="assignStaffModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center;"
+    onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff; border-radius:12px; padding:28px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <h3 style="margin:0 0 4px; font-size:16px; font-weight:700;">Kelola Anggota Tim</h3>
+        <p style="margin:0 0 18px; font-size:13px; color:#6b7280;">Manager: <strong id="assignManagerName"></strong></p>
+
+        <form id="assignStaffForm" method="POST">
+            @csrf
+            <input type="hidden" id="assignManagerId" name="manager_id">
+            <div id="assignStaffList" style="margin-bottom:16px; max-height:50vh; overflow-y:auto;"></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #e5e7eb; padding-top:14px; margin-top:4px;">
+                <button type="button" onclick="document.getElementById('assignStaffModal').style.display='none'"
+                    style="padding:8px 18px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:13px; cursor:pointer;">
+                    Batal
+                </button>
+                <button type="submit"
+                    style="padding:8px 18px; border:none; border-radius:8px; background:#7C3AED; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">
+                    Simpan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 @endpush

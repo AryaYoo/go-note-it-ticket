@@ -36,5 +36,13 @@ class CompanyScope implements Scope
         if ($user->company_id) {
             $builder->where($model->getTable() . '.company_id', $user->company_id);
         }
+
+        // Manager → tambahan filter: hanya tiket dari timnya (dirinya + staff-nya)
+        if ($user->isManager()) {
+            $teamIds = $user->teamUserIds();
+            if (!empty($teamIds)) {
+                $builder->whereIn($model->getTable() . '.user_id', $teamIds);
+            }
+        }
     }
 }

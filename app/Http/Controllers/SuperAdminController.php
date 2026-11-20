@@ -221,13 +221,19 @@ class SuperAdminController extends Controller
     public function managers()
     {
         $managers = User::where('role', 'manager')
-            ->with('company')
+            ->with(['company', 'staff'])
             ->orderBy('name')
             ->paginate(10);
 
         $companies = Company::where('is_active', true)->orderBy('name')->get();
 
-        return view('superadmin.managers', compact('managers', 'companies'));
+        // Semua staff per company untuk modal assign
+        $allStaff = User::where('role', 'staff')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('company_id');
+
+        return view('superadmin.managers', compact('managers', 'companies', 'allStaff'));
     }
 
     public function storeManager(Request $request)
@@ -266,5 +272,28 @@ class SuperAdminController extends Controller
 
         return redirect()->route('superadmin.managers')
             ->with('success', 'Manager berhasil dihapus.');
+    }
+
+    public function assignStaff(Request $request, User $user)
+    {
+        if ($user->role !== 'manager') {
+            return redirect()->route('superadmin.managers')->with('error', 'User bukan manager.');
+        }
+
+        $staffIds = $request->input('staff_ids', []);
+
+        // Lepas semua staff lama dari manager ini
+        User::where('manager_id', $user->id)->update(['manager_id' => null]);
+
+        // Assign staff baru
+        if (!empty($staffIds)) {
+            User::whereIn('id', $staffIds)
+                ->where('role', 'staff')
+                ->where('company_id', $user->company_id)
+                ->update(['manager_id' => $user->id]);
+        }
+
+        return redirect()->route('superadmin.managers')
+            ->with('success', "Anggota tim {$user->name} berhasil diperbarui.");
     }
 }

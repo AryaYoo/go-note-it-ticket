@@ -19,6 +19,7 @@ class User extends Authenticatable
         'role',
         'divisi',
         'company_id',
+        'manager_id',
     ];
 
     protected $hidden = [
@@ -56,6 +57,24 @@ class User extends Authenticatable
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Manager dari staff ini */
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /** Staff yang dikelola oleh manager ini */
+    public function staff()
+    {
+        return $this->hasMany(User::class, 'manager_id');
+    }
+
+    /** Semua user_id dalam tim manager (termasuk dirinya sendiri) */
+    public function teamUserIds(): array
+    {
+        return $this->staff()->pluck('id')->push($this->id)->toArray();
     }
 
     public function tickets()
