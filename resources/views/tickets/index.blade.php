@@ -500,43 +500,101 @@ async function shareTicketText() {
     // Hanya tiket yang belum ditutup (Open / Eskalasi)
     const openTickets = tickets.filter(t => t.status !== 'Closed');
 
+    // Helper: format lokasi dan nama toko
+    const formatLocationTitle = (str) => {
+        if (!str) return '';
+        const acronyms = ['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'GRAGE', 'CIWALK', 'CSB', 'MAG', 'KCP', 'PIM'];
+        return str.trim().split(/[\s_-]+/).map(w => {
+            const up = w.toUpperCase();
+            if (acronyms.includes(up)) return up;
+            if (up.startsWith('HS')) return up;
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }).join(' ');
+    };
+
+    const formatGameLocation = (storeLabel) => {
+        const acronyms = ['LW', 'TP', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'CSB', 'MAG', 'KCP', 'PIM'];
+        return storeLabel.trim().split(/\s+/).map(w => {
+            const up = w.toUpperCase();
+            if (acronyms.includes(up)) return up;
+            return w.toLowerCase();
+        }).join(' ');
+    };
+
     // Helper: apakah teks mengandung salah satu kata kunci
     const has = (text, ...words) => words.some(w => (text || '').toLowerCase().includes(w.toLowerCase()));
 
-    // Klasifikasi tiket ke 4 bucket
-    const listNvrModem  = []; // NVR / DVR / Modem / Router
-    const listCctvStore = []; // CCTV Store biasa
-    const listCctvMoka  = []; // CCTV Moka / kasir POS
-    const listCctvGame  = []; // CCTV Game / hiburan
+    // Klasifikasi tiket ke 5 bucket
+    const listModem     = [];
+    const listNvr       = [];
+    const storeCctvMap  = new Map();
+    const listCctvMoka  = [];
+    const listCctvGame  = [];
 
     const pushUnique = (arr, val) => { if (val && !arr.includes(val)) arr.push(val); };
 
     openTickets.forEach(t => {
-        const loc   = (t.divisi_toko   || '').trim();
-        const desc  = (t.deskripsi_kendala || '').trim();
-        const combo = loc + ' ' + desc;
+        const loc        = (t.divisi_toko       || '').trim();
+        const desc       = (t.deskripsi_kendala || '').trim();
+        const cat        = (t.kategori          || '').toLowerCase().trim();
+        const combo      = (loc + ' ' + desc).toLowerCase();
+        const storeLabel = formatLocationTitle(loc);
 
-        // Deteksi catatan tambahan dari deskripsi
-        let note = '';
-        if (has(combo, 'modem', 'simcard', 'sim card')) note = '(Modem / Simcard bermasalah)';
-        else if (has(desc, 'cam 1', 'camera 1', 'ch1', 'channel 1')) note = '(cam 1)';
-        else if (has(desc, 'cam 2', 'camera 2', 'ch2', 'channel 2')) note = '(cam 2)';
-        else if (has(desc, 'cam 3', 'camera 3', 'ch3', 'channel 3')) note = '(cam 3)';
-        else if (has(desc, 'cam 4', 'camera 4', 'ch4', 'channel 4')) note = '(cam 4)';
+        // 1. CCTV Game
+        if (has(combo, 'game', 'games')) {
+            pushUnique(listCctvGame, `· game ${formatGameLocation(storeLabel)}`);
+        }
+        // 2. CCTV Moka (Kasir)
+        else if (has(combo, 'moka', 'mokapos', 'kasir', 'pos')) {
+            pushUnique(listCctvMoka, `· Moka ${storeLabel}`);
+        }
+        // 3. Modem
+        else if (cat === 'wifi' || has(combo, 'modem', 'simcard', 'sim card', 'kuota', 'orbit', 'router')) {
+            pushUnique(listModem, `· ${storeLabel}`);
+        }
+        // 4. NVR / DVR
+        else if (cat === 'nvr' || has(combo, 'nvr', 'dvr')) {
+            pushUnique(listNvr, `· ${storeLabel}`);
+        }
+        // 5. CCTV Store (regular camera)
+        else {
+            if (!storeCctvMap.has(storeLabel)) {
+                storeCctvMap.set(storeLabel, new Set());
+            }
+            const chanSet = storeCctvMap.get(storeLabel);
 
-        const line = note ? `- ${loc} ${note}` : `- ${loc}`;
+            // Match CAM 1, CAM 2, ch1, etc.
+            const m = desc.match(/(?:channel|cam(?:era)?|ch)\s*(\d+)/gi);
+            if (m) {
+                m.forEach(token => {
+                    const digit = token.match(/\d+/);
+                    if (digit) chanSet.add(parseInt(digit[0], 10));
+                });
+            } else {
+                const singleNum = desc.match(/\b(\d+)\b/);
+                if (singleNum && cat === 'cctv') {
+                    chanSet.add(parseInt(singleNum[1], 10));
+                }
+            }
+        }
+    });
 
-        if (t.kategori === 'NVR' || has(combo, 'nvr', 'dvr', 'modem', 'router')) {
-            pushUnique(listNvrModem, line);
-        } else if (has(combo, 'game', 'games')) {
-            pushUnique(listCctvGame, line);
-        } else if (has(combo, 'moka', 'mokapos', 'kasir', 'pos ')) {
-            pushUnique(listCctvMoka, line);
-        } else if (t.kategori === 'CCTV' || has(combo, 'cctv', 'kamera', 'camera', 'cam')) {
-            pushUnique(listCctvStore, line);
+    // Format listCctvStore with grouped channels e.g. (CAM 1,2)
+    const listCctvStore = [];
+    storeCctvMap.forEach((chanSet, storeLabel) => {
+        if (chanSet.size > 0) {
+            const arr = Array.from(chanSet);
+            const isAllNumeric = arr.every(x => typeof x === 'number' || (!isNaN(parseInt(x, 10)) && /^\d+$/.test(String(x))));
+            let chanStr = '';
+            if (isAllNumeric) {
+                const sortedNums = arr.map(x => parseInt(x, 10)).sort((a, b) => a - b);
+                chanStr = `(CAM ${sortedNums.join(',')})`;
+            } else {
+                chanStr = `(${arr.join(',')})`;
+            }
+            listCctvStore.push(`· ${storeLabel} ${chanStr}`);
         } else {
-            // Tiket non-CCTV: masuk ke NVR/Modem sebagai fallback agar tetap tercantum
-            pushUnique(listNvrModem, line);
+            listCctvStore.push(`· ${storeLabel}`);
         }
     });
 
@@ -553,7 +611,8 @@ async function shareTicketText() {
         }
     } else {
         const sections = [];
-        if (listNvrModem.length > 0)  sections.push(`list nvr/modem store offline ${dateShort}\n${listNvrModem.join('\n')}`);
+        if (listModem.length > 0)     sections.push(`list modem offline ${dateShort}\n${listModem.join('\n')}`);
+        if (listNvr.length > 0)       sections.push(`list nvr offline ${dateShort}\n${listNvr.join('\n')}`);
         if (listCctvStore.length > 0) sections.push(`list cctv store offline ${dateShort}\n${listCctvStore.join('\n')}`);
         if (listCctvMoka.length > 0)  sections.push(`list cctv moka offline ${dateShort}\n${listCctvMoka.join('\n')}`);
         if (listCctvGame.length > 0)  sections.push(`list cctv game offline ${dateShort}\n${listCctvGame.join('\n')}`);

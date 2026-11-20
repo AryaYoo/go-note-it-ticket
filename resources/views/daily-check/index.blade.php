@@ -691,11 +691,35 @@ async function reportAllOffline() {
 // ── Format Helper untuk Lokasi & Toko ─────────────
 function formatLocationTitle(str) {
     if (!str) return '';
-    const acronyms = ['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'GRAGE', 'CIWALK'];
+    const acronyms = ['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'GRAGE', 'CIWALK', 'CSB', 'MAG', 'KCP', 'PIM'];
     return str.trim().split(/[\s_-]+/).map(w => {
         const up = w.toUpperCase();
         if (acronyms.includes(up)) return up;
+        if (up.startsWith('HS')) return up;
         return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }).join(' ');
+}
+
+function resolveStoreLabel(storeName, storeBranch) {
+    storeName = (storeName || '').trim();
+    storeBranch = (storeBranch || '').trim();
+
+    let name = storeBranch || storeName;
+    if (storeName.toLowerCase().includes('heaven scent') || storeName.toLowerCase().startsWith('hs')) {
+        let b = storeBranch || storeName.replace(/heaven\s*scent/i, '').trim();
+        name = b.toLowerCase().startsWith('hs') ? b : `HS ${b}`;
+    } else if (storeBranch && storeName && storeName.toLowerCase() !== storeBranch.toLowerCase()) {
+        name = storeBranch;
+    }
+    return formatLocationTitle(name);
+}
+
+function formatGameLocation(storeLabel) {
+    const acronyms = ['LW', 'TP', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA', 'CSB', 'MAG', 'KCP', 'PIM'];
+    return storeLabel.trim().split(/\s+/).map(w => {
+        const up = w.toUpperCase();
+        if (acronyms.includes(up)) return up;
+        return w.toLowerCase();
     }).join(' ');
 }
 
@@ -706,8 +730,9 @@ function shareOfflineText() {
 
     const dateStr = '{{ \Carbon\Carbon::parse($today)->format("m/d/y") }}';
 
-    const listOffline = [];
-    const listCctvStore = [];
+    const listModem = [];
+    const listNvr = [];
+    const storeCctvMap = new Map(); // storeLabel -> Set of channel strings/numbers
     const listCctvMoka = [];
     const listCctvGame = [];
 
@@ -721,90 +746,77 @@ function shareOfflineText() {
         const aliasLower  = alias.toLowerCase();
         const storeName   = (cb.dataset.storeName || '').trim();
         const storeBranch = (cb.dataset.storeBranch || '').trim();
-        const notes       = (cb.dataset.notes || '').trim();
         const channels    = (cb.dataset.channels || '').trim();
 
+        const storeLabel  = resolveStoreLabel(storeName, storeBranch);
+
         // 1. CCTV Game
-        if (aliasLower.includes('game')) {
-            let loc = storeBranch || alias;
-            loc = loc.replace(/\b(cctv|games?|channel\s*\d+|kamera|camera)\b/gi, '').trim();
-            let locFormatted = loc.split(/[\s_-]+/).map(w => {
-                const up = w.toUpperCase();
-                if (['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(up)) return up;
-                return w.toLowerCase();
-            }).join(' ').trim();
-            pushUnique(listCctvGame, `- game ${locFormatted}`);
+        if (type === 'cctv_game' || aliasLower.includes('game')) {
+            pushUnique(listCctvGame, `· game ${formatGameLocation(storeLabel)}`);
         }
-        // 2. CCTV Moka
-        else if (aliasLower.includes('moka') || aliasLower.includes('kasir')) {
-            let loc = storeBranch || alias;
-            loc = loc.replace(/\b(cctv|moka(pos)?|channel\s*\d+|kamera|camera)\b/gi, '').trim();
-            let locFormatted = loc.split(/[\s_-]+/).map(w => {
-                const up = w.toUpperCase();
-                if (['TP', 'LW', 'SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(up)) return up;
-                return w.toLowerCase();
-            }).join(' ').trim();
-            pushUnique(listCctvMoka, `- Moka ${locFormatted}`);
+        // 2. CCTV Moka (Kasir)
+        else if (type === 'cctv_kasir' || aliasLower.includes('moka') || aliasLower.includes('kasir') || aliasLower.includes('pos')) {
+            pushUnique(listCctvMoka, `· Moka ${storeLabel}`);
         }
-        // 3. NVR / DVR / Modem / Router (List Offline utama)
-        else if (['nvr', 'dvr', 'modem', 'router'].includes(type) || aliasLower.includes('modem') || aliasLower.includes('router')) {
-            let storeLabel = '';
-            const cleanBranch = formatLocationTitle(storeBranch);
-            const aliasUpper = alias.toUpperCase();
-            const branchUpper = storeBranch.toUpperCase();
-
-            if (aliasUpper.startsWith('HS ') || storeName.toUpperCase().includes('HEAVEN SCENT')) {
-                if (['SCH', 'JCM', 'BIP', 'MOG', 'TSM', 'SDA'].includes(branchUpper)) {
-                    storeLabel = 'HS ' + branchUpper;
-                } else if (!cleanBranch.toUpperCase().startsWith('HS ')) {
-                    if (aliasUpper.startsWith('HS ')) {
-                        storeLabel = 'HS ' + cleanBranch;
-                    } else {
-                        storeLabel = cleanBranch || alias;
-                    }
-                } else {
-                    storeLabel = cleanBranch;
-                }
-            } else {
-                storeLabel = cleanBranch || alias;
-            }
-
-            let extraNote = '';
-            if (notes) {
-                extraNote = ` (${notes})`;
-            } else if (type === 'modem' || type === 'router' || aliasLower.includes('modem') || aliasLower.includes('simcard')) {
-                extraNote = ' (Modem / SIMCARD)';
-            }
-
-            pushUnique(listOffline, `- ${storeLabel}${extraNote}`);
+        // 3. Modem
+        else if (type === 'modem' || aliasLower.includes('modem') || aliasLower.includes('router') || aliasLower.includes('simcard')) {
+            pushUnique(listModem, `· ${storeLabel}`);
         }
-        // 4. CCTV Store Offline (regular store camera / channels)
+        // 4. NVR / DVR
+        else if (['nvr', 'dvr'].includes(type) || aliasLower.includes('nvr') || aliasLower.includes('dvr')) {
+            pushUnique(listNvr, `· ${storeLabel}`);
+        }
+        // 5. Regular CCTV Store (grouping channels per store)
         else {
-            let camPart = '';
+            if (!storeCctvMap.has(storeLabel)) {
+                storeCctvMap.set(storeLabel, new Set());
+            }
+            const chanSet = storeCctvMap.get(storeLabel);
+
             if (channels) {
-                camPart = channels.toUpperCase().startsWith('CAM') ? `(${channels.toUpperCase()})` : `(CAM ${channels})`;
-            } else {
-                const m = alias.match(/(?:channel|cam(?:era)?)\s*(\d+)/i);
-                if (m) {
-                    camPart = `(CAM ${m[1]})`;
+                const nums = channels.match(/\d+/g);
+                if (nums) {
+                    nums.forEach(n => chanSet.add(parseInt(n, 10)));
                 } else {
-                    camPart = `(${alias})`;
+                    chanSet.add(channels.replace(/cam/gi, '').trim());
+                }
+            } else {
+                const m = alias.match(/(?:channel|cam(?:era)?|cctv)\s*(\d+)/i) || alias.match(/\b(\d+)\b/);
+                if (m) {
+                    chanSet.add(parseInt(m[1], 10));
+                } else {
+                    chanSet.add(alias);
                 }
             }
+        }
+    });
 
-            let storeLabel = formatLocationTitle(storeBranch) || formatLocationTitle(storeName);
-            if (alias.toUpperCase().startsWith('HS ') && !storeLabel.toUpperCase().startsWith('HS ')) {
-                storeLabel = 'HS ' + storeLabel;
+    // Format listCctvStore with grouped channels e.g. (CAM 1,2)
+    const listCctvStore = [];
+    storeCctvMap.forEach((chanSet, storeLabel) => {
+        if (chanSet.size > 0) {
+            const arr = Array.from(chanSet);
+            const isAllNumeric = arr.every(x => typeof x === 'number' || (!isNaN(parseInt(x, 10)) && /^\d+$/.test(String(x))));
+            let chanStr = '';
+            if (isAllNumeric) {
+                const sortedNums = arr.map(x => parseInt(x, 10)).sort((a, b) => a - b);
+                chanStr = `(CAM ${sortedNums.join(',')})`;
+            } else {
+                chanStr = `(${arr.join(',')})`;
             }
-
-            pushUnique(listCctvStore, `- ${storeLabel} ${camPart}`);
+            listCctvStore.push(`· ${storeLabel} ${chanStr}`);
+        } else {
+            listCctvStore.push(`· ${storeLabel}`);
         }
     });
 
     const sections = [];
 
-    if (listOffline.length > 0) {
-        sections.push(`list offline ${dateStr}\n` + listOffline.join('\n'));
+    if (listModem.length > 0) {
+        sections.push(`list modem offline ${dateStr}\n` + listModem.join('\n'));
+    }
+    if (listNvr.length > 0) {
+        sections.push(`list nvr offline ${dateStr}\n` + listNvr.join('\n'));
     }
     if (listCctvStore.length > 0) {
         sections.push(`list cctv store offline ${dateStr}\n` + listCctvStore.join('\n'));
@@ -819,7 +831,7 @@ function shareOfflineText() {
     let fullText = sections.join('\n\n');
 
     if (!fullText) {
-        fullText = `list offline ${dateStr}\n- Semua perangkat online / OK`;
+        fullText = `list offline ${dateStr}\n· Semua perangkat online / OK`;
     }
 
     // Salin ke Clipboard & Tampilkan Konfirmasi
