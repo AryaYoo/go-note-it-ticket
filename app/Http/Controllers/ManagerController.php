@@ -35,10 +35,15 @@ class ManagerController extends Controller
 
     public function users()
     {
-        // Hanya tampilkan user dari perusahaan yang sama
+        // Hanya tampilkan user dari tim manager ini (dirinya sendiri + seluruh stafnya)
         $users = \App\Models\User::where('company_id', auth()->user()->company_id)
+            ->where(function ($q) {
+                $q->where('manager_id', auth()->id())
+                  ->orWhere('id', auth()->id());
+            })
             ->orderBy('name')
             ->paginate(10);
+
         return view('manager.users', compact('users'));
     }
 
@@ -60,6 +65,7 @@ class ManagerController extends Controller
 
         \App\Models\User::create([
             'company_id' => auth()->user()->company_id, // ikat ke perusahaan manager ini
+            'manager_id' => auth()->id(),               // ikat staf ke tim managernya
             'name'       => $request->name,
             'email'      => $request->email,
             'password'   => \Illuminate\Support\Facades\Hash::make($request->password),
