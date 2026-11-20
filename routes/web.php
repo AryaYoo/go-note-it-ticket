@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/share/text', [TicketController::class, 'shareText'])->name('tickets.share-text');
     Route::get('/tickets/export/download', [TicketController::class, 'export'])->name('tickets.export');
     Route::post('/tickets/analyze', [TicketController::class, 'analyze'])->name('tickets.analyze');
+    Route::post('/tickets/import', [TicketController::class, 'importExcel'])->name('tickets.import');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::get('/tickets/{ticket}/edit', [TicketController::class, 'edit'])->name('tickets.edit');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Services\GeminiService;
 use App\Exports\TicketsExport;
+use App\Imports\TicketsImport;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use Illuminate\Http\Request;
@@ -399,6 +400,37 @@ class TicketController extends Controller
     {
         $filename = 'Form Ticket IT - ' . now()->format('m-Y') . '.xlsx';
         return Excel::download(new TicketsExport($request->all()), $filename);
+    }
+
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:20480',
+        ], [
+            'file.required' => 'Pilih file Excel terlebih dahulu.',
+            'file.mimes'    => 'File harus berformat .xlsx atau .xls.',
+            'file.max'      => 'Ukuran file maksimal 20 MB.',
+        ]);
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('file')->getRealPath());
+            $sheet       = $spreadsheet->getActiveSheet();
+
+            $importer = new TicketsImport();
+            $importer->import($sheet);
+
+            $msg = "Import selesai: {$importer->imported} tiket berhasil diimpor";
+            if ($importer->skipped > 0) {
+                $msg .= ", {$importer->skipped} dilewati (nomor tiket sudah ada)";
+            }
+            if (!empty($importer->errors)) {
+                $msg .= '. Gagal: ' . implode('; ', array_slice($importer->errors, 0, 5));
+            }
+
+            return redirect()->route('tickets.index')->with('success', $msg);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal membaca file: ' . $e->getMessage());
+        }
     }
 
     /**

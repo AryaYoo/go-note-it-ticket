@@ -24,6 +24,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Ekspor Excel
         </a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-import').style.display='flex'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Import Excel
+        </button>
     </div>
 </div>
 
@@ -611,4 +615,44 @@ async function shareTicketText() {
     }
 }
 </script>
+
+{{-- Modal Import Excel --}}
+<div id="modal-import" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:28px; width:100%; max-width:440px; box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <h3 style="margin:0 0 6px; font-size:16px; font-weight:700;">Import Tiket dari Excel</h3>
+        <p style="margin:0 0 18px; font-size:13px; color:#666;">Format: kolom B–P mulai baris 4 (sama dengan format ekspor).<br>Tiket dengan nomor yang sudah ada akan dilewati.</p>
+
+        @if(session('success'))
+            <div style="background:#d1fae5; color:#065f46; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px;">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div style="background:#fee2e2; color:#991b1b; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px;">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('tickets.import') }}" enctype="multipart/form-data">
+            @csrf
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Pilih File Excel (.xlsx / .xls)</label>
+                <input type="file" name="file" accept=".xlsx,.xls" required
+                    style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;">
+                @error('file') <p style="color:#dc2626; font-size:12px; margin:4px 0 0;">{{ $message }}</p> @enderror
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('modal-import').style.display='none'"
+                    style="padding:8px 18px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:13px; cursor:pointer;">
+                    Batal
+                </button>
+                <button type="submit"
+                    style="padding:8px 18px; border:none; border-radius:8px; background:#2563eb; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">
+                    Import
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @endpush
