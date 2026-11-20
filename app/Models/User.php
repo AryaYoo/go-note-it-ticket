@@ -71,10 +71,21 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'manager_id');
     }
 
-    /** Semua user_id dalam tim manager (termasuk dirinya sendiri) */
+    /** Semua user_id dalam tim (manager beserta seluruh stafnya) */
     public function teamUserIds(): array
     {
-        return $this->staff()->pluck('id')->push($this->id)->toArray();
+        if ($this->isManager()) {
+            return $this->staff()->pluck('id')->push($this->id)->toArray();
+        }
+
+        if ($this->manager_id) {
+            $manager = $this->manager ?? User::find($this->manager_id);
+            if ($manager) {
+                return $manager->teamUserIds();
+            }
+        }
+
+        return [$this->id];
     }
 
     public function tickets()
