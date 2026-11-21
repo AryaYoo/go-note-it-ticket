@@ -118,6 +118,48 @@ class ManagerController extends Controller
         return redirect()->route('manager.users')->with('success', 'User berhasil dihapus.');
     }
 
+    public function ticketSettings()
+    {
+        $prefix = \App\Models\Setting::get('ticket_prefix', auth()->user()->divisi === 'General Affairs' ? 'GA' : 'IT');
+        $defaultPriority = \App\Models\Setting::get('ticket_default_priority', 'Medium');
+        $categories = \App\Models\Setting::get('ticket_categories', 'POS, CCTV, NVR, WiFi, Modem, Akun, Laptop, Print Thermal, Email, Lainnya');
+        $slaHigh = \App\Models\Setting::get('ticket_sla_high', '24');
+        $slaMedium = \App\Models\Setting::get('ticket_sla_medium', '48');
+        $slaLow = \App\Models\Setting::get('ticket_sla_low', '72');
+        $autoAiSuggestion = \App\Models\Setting::isTrue('ticket_auto_ai_suggestion', true);
+        $requireEvidence = \App\Models\Setting::isTrue('ticket_require_evidence', false);
+        $shareReportHeader = \App\Models\Setting::get('ticket_share_report_header', 'Open Ticket');
+
+        return view('manager.ticket-settings', compact(
+            'prefix', 'defaultPriority', 'categories', 'slaHigh', 'slaMedium', 'slaLow',
+            'autoAiSuggestion', 'requireEvidence', 'shareReportHeader'
+        ));
+    }
+
+    public function updateTicketSettings(Request $request)
+    {
+        $request->validate([
+            'ticket_prefix' => 'required|string|max:10',
+            'ticket_default_priority' => 'required|in:Low,Medium,High,Urgent',
+            'ticket_categories' => 'required|string',
+            'ticket_sla_high' => 'required|numeric|min:1',
+            'ticket_sla_medium' => 'required|numeric|min:1',
+            'ticket_sla_low' => 'required|numeric|min:1',
+        ]);
+
+        \App\Models\Setting::set('ticket_prefix', strtoupper(trim($request->ticket_prefix)));
+        \App\Models\Setting::set('ticket_default_priority', $request->ticket_default_priority);
+        \App\Models\Setting::set('ticket_categories', trim($request->ticket_categories));
+        \App\Models\Setting::set('ticket_sla_high', $request->ticket_sla_high);
+        \App\Models\Setting::set('ticket_sla_medium', $request->ticket_sla_medium);
+        \App\Models\Setting::set('ticket_sla_low', $request->ticket_sla_low);
+        \App\Models\Setting::set('ticket_auto_ai_suggestion', $request->boolean('ticket_auto_ai_suggestion') ? '1' : '0');
+        \App\Models\Setting::set('ticket_require_evidence', $request->boolean('ticket_require_evidence') ? '1' : '0');
+        \App\Models\Setting::set('ticket_share_report_header', trim($request->input('ticket_share_report_header', 'Open Ticket')));
+
+        return redirect()->route('manager.ticket-settings')->with('success', 'Pengaturan tiket berhasil diperbarui.');
+    }
+
     public function settings()
     {
         $showDemoCredentials = \App\Models\Setting::isTrue('show_demo_credentials', true);

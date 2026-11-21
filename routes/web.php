@@ -106,6 +106,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/analysis/create', [\App\Http\Controllers\MonthlyAnalysisController::class, 'createByAi'])->name('analysis.create');
         Route::get('/analysis/{id}', [\App\Http\Controllers\MonthlyAnalysisController::class, 'show'])->name('analysis.show');
 
+        Route::get('/ticket-settings', [\App\Http\Controllers\ManagerController::class, 'ticketSettings'])->name('ticket-settings');
+        Route::post('/ticket-settings', [\App\Http\Controllers\ManagerController::class, 'updateTicketSettings'])->name('ticket-settings.update');
+
         Route::get('/settings', [\App\Http\Controllers\ManagerController::class, 'settings'])->name('settings');
         Route::post('/settings', [\App\Http\Controllers\ManagerController::class, 'updateSettings'])->name('settings.update');
         Route::post('/settings/reset-gemini', [\App\Http\Controllers\ManagerController::class, 'resetGeminiQuota'])->name('settings.reset-gemini');

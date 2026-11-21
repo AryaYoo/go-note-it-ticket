@@ -28,11 +28,24 @@ class UserSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'it'],
             [
-                'name'     => 'Staff IT',
-                'email'    => 'it',
-                'password' => Hash::make('it'),
-                'role'     => 'staff',
-                'divisi'   => 'IT Support',
+                'name'       => 'Manager IT',
+                'email'      => 'it',
+                'password'   => Hash::make('it'),
+                'role'       => 'manager',
+                'divisi'     => 'IT Support',
+                'company_id' => 1,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'ga'],
+            [
+                'name'       => 'Manager GA',
+                'email'      => 'ga',
+                'password'   => Hash::make('ga'),
+                'role'       => 'manager',
+                'divisi'     => 'General Affairs',
+                'company_id' => 1,
             ]
         );
 
