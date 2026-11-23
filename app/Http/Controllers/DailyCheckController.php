@@ -19,7 +19,7 @@ class DailyCheckController extends Controller
      */
     public function index()
     {
-        $companyId = Auth::user()->company_id;
+        $companyId = Auth::user()->company_id ?? 1;
         $today     = now()->toDateString();
 
         // Ambil atau buat sesi hari ini
