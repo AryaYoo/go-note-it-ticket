@@ -51,7 +51,7 @@ class Device extends Model
 
     public function tickets()
     {
-        return $this->belongsToMany(Ticket::class, 'ticket_devices')->withoutGlobalScope(CompanyScope::class);
+        return $this->belongsToMany(Ticket::class, 'ticket_devices');
     }
 
     /**

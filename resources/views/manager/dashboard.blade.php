@@ -102,7 +102,7 @@
 @section('content')
 <div class="page-header" style="margin-bottom: 20px;">
     <div>
-        <h1 style="font-size: 20px; font-weight: 700; color: var(--text);">Ringkasan Tiket IT Operasional</h1>
+        <h1 style="font-size: 20px; font-weight: 700; color: var(--text);">Ringkasan Tiket {{ auth()->user()->divisi ?: (str_starts_with(auth()->user()->name, 'Manager ') ? substr(auth()->user()->name, 8) : auth()->user()->name) }}</h1>
         <div class="page-header-sub">Ikhtisar metrik tiket, progres pengerjaan, dan distribusi toko</div>
     </div>
 </div>

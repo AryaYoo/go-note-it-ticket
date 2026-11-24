@@ -241,6 +241,7 @@ class SuperAdminController extends Controller
         $request->validate([
             'company_id' => 'required|exists:companies,id',
             'name'       => 'required|string|max:255',
+            'divisi'     => 'nullable|string|max:255',
             'email'      => 'required|email|max:255|unique:users,email',
             'password'   => 'required|string|min:6',
         ], [
@@ -254,7 +255,7 @@ class SuperAdminController extends Controller
             'email'      => $request->email,
             'password'   => Hash::make($request->password),
             'role'       => 'manager',
-            'divisi'     => null,
+            'divisi'     => $request->filled('divisi') ? trim($request->divisi) : null,
         ]);
 
         return redirect()->route('superadmin.managers')

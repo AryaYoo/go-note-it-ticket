@@ -64,10 +64,16 @@ class DailyCheckController extends Controller
                     $item->update($updates);
                 }
             } else {
-                // Tiket sudah Closed atau belum pernah ada tiket.
-                // Jika item sesi ini sebelumnya ditandai ticket_created karena tiket kemarin yang sekarang sudah Closed,
-                // kembalikan ke status normal (online / OK).
-                if ($item->result === DailyCheckItem::RESULT_TICKET_CREATED) {
+                // Tiket sudah Closed atau belum pernah ada tiket untuk tim ini.
+                // Hanya reset status jika perangkat benar-benar TIDAK memiliki tiket aktif apapun di tabel ticket_devices
+                $hasAnyOpenTicketInCompany = DB::table('ticket_devices')
+                    ->join('tickets', 'ticket_devices.ticket_id', '=', 'tickets.id')
+                    ->where('ticket_devices.device_id', $device->id)
+                    ->where('tickets.status', '!=', 'Closed')
+                    ->whereNull('tickets.deleted_at')
+                    ->exists();
+
+                if (!$hasAnyOpenTicketInCompany && $item->result === DailyCheckItem::RESULT_TICKET_CREATED) {
                     $item->update([
                         'is_offline'    => false,
                         'result'        => null,

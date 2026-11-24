@@ -171,7 +171,12 @@
                         <div class="user-chip-avatar">{{ strtoupper(substr($manager->name, 0, 1)) }}</div>
                         <div>
                             <div class="user-chip-name">{{ $manager->name }}</div>
-                            <div class="user-chip-email">{{ $manager->email }}</div>
+                            <div class="user-chip-email">
+                                {{ $manager->email }}
+                                @if($manager->divisi)
+                                    <span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; background:#EEF2FF; color:#4F46E5; font-size:10.5px; font-weight:600;">{{ $manager->divisi }}</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </td>
@@ -272,6 +277,10 @@
             <div class="form-group">
                 <label class="form-label">Nama Manager <span style="color:#EF4444">*</span></label>
                 <input type="text" name="name" class="form-input" placeholder="Ahmad Fauzi" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Divisi / Departemen</label>
+                <input type="text" name="divisi" class="form-input" placeholder="misal: IT Operasional, General Affairs, Finance">
             </div>
             <div class="form-group">
                 <label class="form-label">Email / Username <span style="color:#EF4444">*</span></label>
