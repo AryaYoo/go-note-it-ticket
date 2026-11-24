@@ -36,13 +36,5 @@ class CompanyScope implements Scope
         if ($user->company_id) {
             $builder->where($model->getTable() . '.company_id', $user->company_id);
         }
-
-        // Filter isolasi tim / divisi: Manager dan Staf hanya melihat tiket dari timnya (khusus model Ticket)
-        if ($model instanceof \App\Models\Ticket) {
-            $teamIds = $user->teamUserIds();
-            if (!empty($teamIds)) {
-                $builder->whereIn($model->getTable() . '.user_id', $teamIds);
-            }
-        }
     }
 }
