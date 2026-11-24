@@ -88,7 +88,7 @@
 <div class="page-header" style="margin-bottom: 20px;">
     <div>
         <h1 style="font-size: 20px; font-weight: 700; color: var(--text);">Analisis Bulanan AI</h1>
-        <div class="page-header-sub">Generate evaluasi performa operasional IT toko menggunakan kecerdasan buatan</div>
+        <div class="page-header-sub">Generate evaluasi performa operasional {{ auth()->user()->divisi ?: 'toko' }} menggunakan kecerdasan buatan</div>
     </div>
 </div>
 

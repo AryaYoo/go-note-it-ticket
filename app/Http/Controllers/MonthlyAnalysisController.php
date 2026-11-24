@@ -42,7 +42,16 @@ class MonthlyAnalysisController extends Controller
         // Get tickets for this month
         // CompanyScope aktif: query ini otomatis hanya mengambil tiket milik
         // perusahaan manager yang sedang login (company_id match).
-        $tickets = Ticket::whereMonth('created_at', $month)->whereYear('created_at', $year)->get();
+        $tickets = Ticket::where(function ($q) use ($month, $year) {
+            $q->where(function ($sub) use ($month, $year) {
+                $sub->whereMonth('tanggal_kejadian', $month)
+                    ->whereYear('tanggal_kejadian', $year);
+            })->orWhere(function ($sub) use ($month, $year) {
+                $sub->whereNull('tanggal_kejadian')
+                    ->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $year);
+            });
+        })->get();
         
         if ($tickets->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada tiket pada bulan ini untuk dianalisis.');
@@ -66,7 +75,8 @@ class MonthlyAnalysisController extends Controller
 
         // Prompt for AI
         $monthName = Carbon::create($year, $month, 1)->translatedFormat('F');
-        $prompt = "Buatkan analisis kinerja IT Support untuk bulan $monthName $year berdasarkan data tiket berikut. "
+        $divisiName = auth()->user()->divisi ?: (auth()->user()->name);
+        $prompt = "Buatkan analisis kinerja $divisiName untuk bulan $monthName $year berdasarkan data tiket berikut. "
             . "Berikan ringkasan total tiket, breakdown berdasarkan status dan kategori, serta temukan pola atau masalah yang sering muncul. "
             . "Berikan juga rekomendasi perbaikan. Format output dalam bentuk Markdown yang rapi dan mudah dibaca (gunakan heading, list, dan tabel jika perlu).\n\nData Tiket:\n" 
             . json_encode($ticketData, JSON_PRETTY_PRINT);
