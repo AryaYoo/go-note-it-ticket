@@ -154,12 +154,22 @@
         <h1 class="sa-page-title">Manajemen Perusahaan</h1>
         <div class="sa-page-sub">Daftarkan perusahaan baru, konfigurasikan API Key AI, dan pantau aktivitasnya.</div>
     </div>
-    <button onclick="document.getElementById('addCompanyModal').classList.add('open')" class="btn-sa-primary">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Tambah Perusahaan
-    </button>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a href="{{ route('superadmin.export-database') }}" class="btn-sa-outline" style="padding: 9px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; text-decoration: none; transition: all .15s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export Semua Data SQL
+        </a>
+        <button onclick="document.getElementById('addCompanyModal').classList.add('open')" class="btn-sa-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Tambah Perusahaan
+        </button>
+    </div>
 </div>
 
 {{-- Callout panduan API Key dinamis dari .env --}}

@@ -38,6 +38,7 @@ class Ticket extends Model
         'tanggal_penyelesaian',
         'solusi_diberikan',
         'root_cause',
+        'catatan',
         'user_id',
         'source',
         'store_id',
@@ -115,7 +116,8 @@ class Ticket extends Model
                 $q->where('nomor_tiket', 'like', "%{$search}%")
                   ->orWhere('nama_pelapor', 'like', "%{$search}%")
                   ->orWhere('divisi_toko', 'like', "%{$search}%")
-                  ->orWhere('deskripsi_kendala', 'like', "%{$search}%");
+                  ->orWhere('deskripsi_kendala', 'like', "%{$search}%")
+                  ->orWhere('catatan', 'like', "%{$search}%");
             })
             : $query;
     }

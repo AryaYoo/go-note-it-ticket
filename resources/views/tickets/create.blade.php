@@ -245,6 +245,11 @@
                 <label class="form-label">Tindakan yang Dilakukan</label>
                 <textarea name="tindakan_dilakukan" id="f-tindakan_dilakukan" class="form-textarea" rows="2" placeholder="Tindakan awal / perbaikan sementara yang dilakukan...">{{ $prefill['tindakan_dilakukan'] ?? '' }}</textarea>
             </div>
+            <div class="form-group" style="margin-top: 14px;">
+                <label class="form-label">Catatan Tiket (Internal Notes)</label>
+                <textarea name="catatan" id="f-catatan" class="form-textarea" rows="2" placeholder="Catatan tambahan, info tindak lanjut, dll..."></textarea>
+                <div class="form-hint">Catatan ini akan tampil langsung di daftar riwayat tiket untuk memudahkan pemantauan tim.</div>
+            </div>
         </div>
     </div>
 

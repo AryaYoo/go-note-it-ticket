@@ -27,6 +27,7 @@ class StoreTicketRequest extends FormRequest
             'tanggal_penyelesaian'  => 'nullable|date',
             'solusi_diberikan'      => 'nullable|string',
             'root_cause'            => 'nullable|string',
+            'catatan'               => 'nullable|string',
             'source'                => 'nullable|string|max:30',
             'store_id'              => 'nullable|exists:stores,id',
             'daily_check_item_id'   => 'nullable|exists:daily_check_items,id',

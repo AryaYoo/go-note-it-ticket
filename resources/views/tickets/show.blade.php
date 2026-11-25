@@ -17,7 +17,7 @@
     </div>
     <div class="flex gap-8">
         @if($ticket->status !== 'Closed')
-        <button type="button" class="btn btn-sm" onclick="closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d')]) }})" style="background: #16A34A; color: #fff; border-color: #16A34A;">
+        <button type="button" class="btn btn-sm" onclick="closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d'), 'catatan' => $ticket->catatan]) }})" style="background: #16A34A; color: #fff; border-color: #16A34A;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"/></svg>
             Tutup Tiket
         </button>
@@ -119,6 +119,25 @@
         </div>
     </div>
 
+    {{-- Seksi: Catatan Internal (Notes) --}}
+    <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="card-title" style="color:#D97706;display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+                Catatan Internal (Notes)
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openNoteModal({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode($ticket->catatan ?? '') }})" style="padding:4px 12px;font-size:12px;color:#D97706;border-color:#FDE68A;background:#FFFBEB;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                {{ $ticket->catatan ? 'Ubah Catatan' : 'Tambah Catatan' }}
+            </button>
+        </div>
+        <div class="detail-field">
+            <div class="detail-value {{ $ticket->catatan ? '' : 'empty' }}" style="white-space: pre-line; line-height: 1.6;">
+                {{ $ticket->catatan ?? 'Belum ada catatan internal pada tiket ini.' }}
+            </div>
+        </div>
+    </div>
+
     {{-- Seksi 4: Penyelesaian --}}
     <div class="card">
         <div class="card-header">
@@ -182,6 +201,7 @@
 </div>
 
 @include('tickets.partials.modal-close')
+@include('tickets.partials.modal-note')
 @endsection
 
 @push('scripts')

@@ -297,4 +297,144 @@ class SuperAdminController extends Controller
         return redirect()->route('superadmin.managers')
             ->with('success', "Anggota tim {$user->name} berhasil diperbarui.");
     }
+
+    // -------------------------------------------------------------------------
+    // Export Database SQL
+    // -------------------------------------------------------------------------
+
+    public function exportDatabase()
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403, 'Akses ditolak. Fitur ini hanya untuk Super Admin.');
+        }
+
+        // Tingkatkan limit eksekusi & memori untuk database dump
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
+        $dbConfig = config('database.connections.mysql');
+        $host     = $dbConfig['host'] ?? '127.0.0.1';
+        $port     = $dbConfig['port'] ?? '3306';
+        $database = $dbConfig['database'];
+        $username = $dbConfig['username'];
+        $password = $dbConfig['password'] ?? '';
+
+        $filename = 'backup_' . $database . '_' . date('Y-m-d_His') . '.sql';
+
+        // 1. Coba gunakan mysqldump jika tersedia (performa cepat & standar MySQL)
+        $mysqldumpPaths = [
+            'mysqldump',
+            'C:\\xampp\\mysql\\bin\\mysqldump.exe',
+            '/usr/bin/mysqldump',
+            '/usr/local/bin/mysqldump',
+        ];
+
+        $dumpBinary = null;
+        foreach ($mysqldumpPaths as $path) {
+            if ($path === 'mysqldump') {
+                $test = @exec("mysqldump --version 2>&1", $out, $code);
+                if ($code === 0) {
+                    $dumpBinary = 'mysqldump';
+                    break;
+                }
+            } elseif (@file_exists($path)) {
+                $dumpBinary = $path;
+                break;
+            }
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'db_dump_');
+
+        if ($dumpBinary) {
+            $cmd = escapeshellarg($dumpBinary)
+                . " --host=" . escapeshellarg($host)
+                . " --port=" . escapeshellarg($port)
+                . " --user=" . escapeshellarg($username);
+
+            if ($password !== '' && $password !== null) {
+                $cmd .= " --password=" . escapeshellarg($password);
+            }
+
+            $cmd .= " --default-character-set=utf8mb4 --routines --triggers " . escapeshellarg($database) . " > " . escapeshellarg($tempFile);
+
+            @exec($cmd, $output, $returnCode);
+
+            if ($returnCode === 0 && file_exists($tempFile) && filesize($tempFile) > 100) {
+                return response()->download($tempFile, $filename, [
+                    'Content-Type' => 'application/sql',
+                ])->deleteFileAfterSend(true);
+            }
+        }
+
+        if (file_exists($tempFile)) {
+            @unlink($tempFile);
+        }
+
+        // 2. Fallback: Ekspor SQL Native via PHP PDO
+        return response()->streamDownload(function () use ($database) {
+            $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $tablesResult = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+            $tableKey = "Tables_in_" . $database;
+
+            echo "-- ========================================================\n";
+            echo "-- Go-Note Database SQL Dump\n";
+            echo "-- Database: {$database}\n";
+            echo "-- Generated at: " . date('Y-m-d H:i:s') . "\n";
+            echo "-- ========================================================\n\n";
+            echo "SET FOREIGN_KEY_CHECKS=0;\n";
+            echo "SET SQL_MODE=\"NO_AUTO_VALUE_ON_ZERO\";\n";
+            echo "SET time_zone = \"+00:00\";\n\n";
+
+            foreach ($tablesResult as $row) {
+                $tableName = $row->$tableKey;
+
+                // Structure
+                $createTable = \Illuminate\Support\Facades\DB::select("SHOW CREATE TABLE `{$tableName}`");
+                $createSql = $createTable[0]->{'Create Table'} ?? '';
+
+                echo "-- --------------------------------------------------------\n";
+                echo "-- Table structure for `{$tableName}`\n";
+                echo "-- --------------------------------------------------------\n";
+                echo "DROP TABLE IF EXISTS `{$tableName}`;\n";
+                echo $createSql . ";\n\n";
+
+                // Data
+                $count = \Illuminate\Support\Facades\DB::table($tableName)->count();
+                if ($count > 0) {
+                    echo "-- Dumping data for table `{$tableName}` ({$count} rows)\n";
+                    \Illuminate\Support\Facades\DB::table($tableName)->orderBy(\Illuminate\Support\Facades\DB::raw('1'))->chunk(200, function ($rows) use ($tableName, $pdo) {
+                        if ($rows->isEmpty()) return;
+
+                        $firstRow = (array) $rows->first();
+                        $columns = array_keys($firstRow);
+                        $colList = implode('`, `', $columns);
+
+                        echo "INSERT INTO `{$tableName}` (`{$colList}`) VALUES\n";
+                        $valuesArr = [];
+                        foreach ($rows as $r) {
+                            $rowArr = (array) $r;
+                            $valParts = [];
+                            foreach ($rowArr as $val) {
+                                if (is_null($val)) {
+                                    $valParts[] = 'NULL';
+                                } elseif (is_numeric($val) && !is_string($val)) {
+                                    $valParts[] = $val;
+                                } else {
+                                    $valParts[] = $pdo->quote($val);
+                                }
+                            }
+                            $valuesArr[] = "(" . implode(', ', $valParts) . ")";
+                        }
+                        echo implode(",\n", $valuesArr) . ";\n\n";
+                    });
+                }
+            }
+
+            echo "SET FOREIGN_KEY_CHECKS=1;\n";
+            echo "-- Dump completed on " . date('Y-m-d H:i:s') . "\n";
+        }, $filename, [
+            'Content-Type' => 'application/sql',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
 }

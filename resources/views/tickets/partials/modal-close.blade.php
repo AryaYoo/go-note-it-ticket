@@ -23,6 +23,26 @@
         {{-- Body Modal (Scrollable) --}}
         <div class="filter-modal-body" style="padding: 16px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
             
+            {{-- Banner Catatan Tiket yang Dipertimbangkan AI --}}
+            <div id="cm-notes-banner" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-left:3px solid #F59E0B; border-radius:8px; padding:10px 12px; font-size:12px; color:#92400E;">
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" style="flex-shrink:0; margin-top:2px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10,9 9,9 8,9"/>
+                    </svg>
+                    <div style="flex:1;">
+                        <div style="font-weight:700; color:#92400E; margin-bottom:2px; display:flex; align-items:center; gap:6px;">
+                            <span>Catatan Internal Tiket:</span>
+                            <span style="font-size:10px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-weight:600; border:1px solid #FDE68A;">Dipertimbangkan AI</span>
+                        </div>
+                        <div id="cm-notes-text" style="color:#78350F; line-height:1.45; word-break:break-word;"></div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Field Tanggal Penyelesaian --}}
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label" style="font-weight: 600; color: var(--text);">
@@ -66,10 +86,10 @@
                         onclick="analyzeCloseModalImages()" 
                         class="btn btn-sm"
                         style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #fff; border: none; font-size: 11.5px; padding: 5px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);"
-                        title="Analisis foto bukti untuk mengisi otomatis Solusi, Tindakan, dan Root Cause"
+                        title="Analisis foto bukti dan catatan tiket untuk mengisi otomatis Solusi, Tindakan, dan Root Cause"
                     >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <span>✦ Analisis AI (<span id="cm-slot-count-badge">0</span>/3)</span>
+                        <span id="cm-ai-btn-text">✦ Analisis AI Penyelesaian</span>
                     </button>
                 </div>
 
@@ -179,6 +199,7 @@
 <script>
 let currentCloseTicketId = null;
 let currentCloseTicketNomor = '';
+let currentCloseTicketNotes = '';
 let closeModalMouseDownTarget = null;
 
 // Array tepat 3 slot foto (maks 3 foto)
@@ -237,11 +258,25 @@ function compressSlotImage(file, maxWidth = 1600, quality = 0.82) {
 function openCloseTicketModal(id, nomor, initialData = {}) {
     currentCloseTicketId = id;
     currentCloseTicketNomor = nomor;
+    currentCloseTicketNotes = initialData.catatan || '';
     closeTicketSlots = [null, null, null];
     activeSlotIndex = 0;
 
     // Header info
     document.getElementById('cm-nomor-badge').textContent = nomor;
+
+    // Catatan tiket banner
+    const banner = document.getElementById('cm-notes-banner');
+    const notesText = document.getElementById('cm-notes-text');
+    if (banner && notesText) {
+        if (currentCloseTicketNotes && currentCloseTicketNotes.trim() !== '') {
+            notesText.textContent = currentCloseTicketNotes;
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+            notesText.textContent = '';
+        }
+    }
 
     // Otomatis terisi tanggal hari ini (format YYYY-MM-DD lokal)
     const today = new Date().toLocaleDateString('en-CA');
@@ -279,6 +314,18 @@ function closeCloseTicketModal() {
     closeTicketSlots = [null, null, null];
 }
 
+function updateAiBtnText(filledCount) {
+    const btnText = document.getElementById('cm-ai-btn-text');
+    if (!btnText) return;
+    if (filledCount > 0) {
+        btnText.innerHTML = `✦ Analisis AI (${filledCount}/3 Foto & Notes)`;
+    } else if (currentCloseTicketNotes && currentCloseTicketNotes.trim() !== '') {
+        btnText.innerHTML = `✦ Analisis AI (Notes & Kendala)`;
+    } else {
+        btnText.innerHTML = `✦ Analisis AI Penyelesaian`;
+    }
+}
+
 /**
  * Render 3 slot placeholder foto
  */
@@ -287,7 +334,7 @@ function renderSlots() {
     grid.innerHTML = '';
 
     const filledCount = closeTicketSlots.filter(s => s !== null).length;
-    document.getElementById('cm-slot-count-badge').textContent = filledCount;
+    updateAiBtnText(filledCount);
 
     closeTicketSlots.forEach((file, index) => {
         const slotEl = document.createElement('div');
@@ -530,19 +577,10 @@ function resetAiStatus() {
 }
 
 /**
- * Trigger Analisis Gemini AI pada foto-foto yang ada di slot
+ * Trigger Analisis Gemini AI pada foto-foto dan catatan tiket
  */
 async function analyzeCloseModalImages() {
     const validFiles = closeTicketSlots.filter(f => f !== null);
-
-    if (validFiles.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Slot Foto Masih Kosong',
-            text: 'Silakan tempel foto dengan Ctrl+V atau klik slot placeholder untuk melampirkan minimal 1 foto bukti penyelesaian.'
-        });
-        return;
-    }
 
     const btn = document.getElementById('btn-cm-ai-analyze');
     const statusDiv = document.getElementById('cm-ai-status');
@@ -554,12 +592,22 @@ async function analyzeCloseModalImages() {
     statusDiv.style.background = '#EEF2FF';
     statusDiv.style.border = '1px solid #C7D2FE';
     statusDiv.style.color = '#3730A3';
-    statusDiv.innerHTML = `✦ Sedang menganalisis ${validFiles.length} foto bukti dengan AI...`;
+
+    if (validFiles.length > 0) {
+        statusDiv.innerHTML = `✦ Sedang menganalisis ${validFiles.length} foto bukti dan catatan tiket dengan AI...`;
+    } else if (currentCloseTicketNotes && currentCloseTicketNotes.trim() !== '') {
+        statusDiv.innerHTML = `✦ Sedang menganalisis penyelesaian otomatis berdasarkan catatan tiket & kendala dengan AI...`;
+    } else {
+        statusDiv.innerHTML = `✦ Sedang merumuskan penyelesaian otomatis berdasarkan detail kendala tiket dengan AI...`;
+    }
 
     const fd = new FormData();
     validFiles.forEach(file => {
         fd.append('images[]', file);
     });
+    if (currentCloseTicketNotes) {
+        fd.append('catatan', currentCloseTicketNotes);
+    }
 
     try {
         const resp = await fetch(`{{ url('/tickets') }}/${currentCloseTicketId}/analyze-resolution`, {

@@ -209,7 +209,7 @@ class TicketController extends Controller
         }
 
         // Lacak perubahan untuk audit log
-        $tracked = ['status', 'prioritas', 'kategori', 'divisi_toko', 'pic', 'solusi_diberikan'];
+        $tracked = ['status', 'prioritas', 'kategori', 'divisi_toko', 'pic', 'solusi_diberikan', 'catatan'];
         $changes = [];
         $descriptions = [];
         foreach ($tracked as $field) {
@@ -251,22 +251,22 @@ class TicketController extends Controller
         Gate::authorize('update', $ticket);
 
         $request->validate([
-            'images'   => 'required|array|min:1|max:3',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
-        ], [
-            'images.required' => 'Harap unggah minimal 1 gambar bukti.',
-            'images.max'      => 'Maksimal 3 gambar per analisis.',
-            'images.*.image'  => 'Setiap file harus berupa gambar.',
-            'images.*.max'    => 'Ukuran setiap gambar maksimal 10 MB.',
+            'images'   => 'nullable|array|max:3',
+            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'catatan'  => 'nullable|string|max:5000',
         ]);
 
         try {
             $tmpPaths = [];
-            foreach ($request->file('images') as $file) {
-                $tmpPaths[] = $file->getRealPath();
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $file) {
+                    $tmpPaths[] = $file->getRealPath();
+                }
             }
 
-            $result = $this->gemini->analyzeResolutionScreenshot($tmpPaths, $ticket);
+            $customNotes = $request->input('catatan');
+
+            $result = $this->gemini->analyzeResolutionScreenshot($tmpPaths, $ticket, $customNotes);
 
             return response()->json(['success' => true, 'data' => $result]);
         } catch (\Throwable $e) {
@@ -431,6 +431,48 @@ class TicketController extends Controller
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Gagal membaca file: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update catatan internal tiket secara cepat.
+     */
+    public function updateNote(Request $request, Ticket $ticket)
+    {
+        Gate::authorize('update', $ticket);
+
+        $request->validate([
+            'catatan' => 'nullable|string|max:5000',
+        ]);
+
+        $oldNote = $ticket->catatan;
+        $newNote = $request->input('catatan');
+
+        $ticket->update(['catatan' => $newNote]);
+
+        // Audit Log: Perubahan catatan
+        $desc = empty($oldNote)
+            ? "Catatan tiket ditambahkan: '" . \Illuminate\Support\Str::limit($newNote ?? '', 60) . "'"
+            : "Catatan tiket diperbarui: '" . \Illuminate\Support\Str::limit($newNote ?? '', 60) . "'";
+
+        \App\Models\TicketHistory::create([
+            'company_id'  => $ticket->company_id,
+            'ticket_id'   => $ticket->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'note_updated',
+            'description' => $desc,
+            'changes'     => [
+                'catatan' => [
+                    'old' => $oldNote,
+                    'new' => $newNote,
+                ],
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catatan tiket berhasil disimpan.',
+            'catatan' => $newNote,
+        ]);
     }
 
     /**

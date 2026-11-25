@@ -42,6 +42,7 @@ class UpdateTicketRequest extends FormRequest
             'tanggal_penyelesaian' => 'nullable|date',
             'solusi_diberikan'    => 'nullable|string',
             'root_cause'          => 'nullable|string',
+            'catatan'             => 'nullable|string',
         ];
     }
 

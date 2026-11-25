@@ -137,6 +137,11 @@
             <label class="form-label">Tindakan yang Dilakukan</label>
             <textarea name="tindakan_dilakukan" class="form-textarea" rows="2">{{ $ticket->tindakan_dilakukan }}</textarea>
         </div>
+        <div class="form-group" style="margin-top: 14px;">
+            <label class="form-label">Catatan Tiket (Internal Notes)</label>
+            <textarea name="catatan" class="form-textarea" rows="2" placeholder="Catatan tambahan, progres tim, kendala khusus, dll...">{{ $ticket->catatan }}</textarea>
+            <div class="form-hint">Catatan ini akan tampil langsung di daftar riwayat tiket untuk memudahkan tim memantau pengerjaan.</div>
+        </div>
     </div>
 </div>
 

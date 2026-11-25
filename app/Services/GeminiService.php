@@ -174,63 +174,82 @@ PROMPT;
     }
 
     /**
-     * Analisis gambar/screenshot bukti penyelesaian kendala tiket (maks 3 gambar).
+     * Analisis bukti gambar dan/atau catatan internal untuk merumuskan formulir penyelesaian kendala tiket.
      *
-     * @param  string[] $imagePaths Array path file gambar
+     * @param  string[] $imagePaths Array path file gambar (opsional, bisa kosong jika hanya berbasis catatan & konteks)
      * @param  \App\Models\Ticket|null $ticket Objek tiket terkait
+     * @param  string|null $customNotes Catatan kustom tambahan jika ada
      * @return array
      */
-    public function analyzeResolutionScreenshot(array $imagePaths, ?\App\Models\Ticket $ticket = null): array
+    public function analyzeResolutionScreenshot(array $imagePaths = [], ?\App\Models\Ticket $ticket = null, ?string $customNotes = null): array
     {
-        if (empty($imagePaths)) {
-            throw new \RuntimeException('Tidak ada gambar bukti yang dikirim untuk dianalisis.');
+        $imageParts = [];
+        if (!empty($imagePaths)) {
+            foreach (array_slice($imagePaths, 0, 3) as $path) {
+                if (@file_exists($path)) {
+                    $mimeType     = mime_content_type($path) ?: 'image/png';
+                    $imageParts[] = [
+                        'inline_data' => [
+                            'mime_type' => $mimeType,
+                            'data'      => base64_encode(file_get_contents($path)),
+                        ],
+                    ];
+                }
+            }
         }
 
-        $imageParts = [];
-        foreach (array_slice($imagePaths, 0, 3) as $path) {
-            $mimeType     = mime_content_type($path) ?: 'image/png';
-            $imageParts[] = [
-                'inline_data' => [
-                    'mime_type' => $mimeType,
-                    'data'      => base64_encode(file_get_contents($path)),
-                ],
-            ];
-        }
+        $catatan = trim($customNotes ?? ($ticket?->catatan ?? ''));
 
         $contextInfo = '';
         if ($ticket) {
             $contextInfo = "Konteks Laporan Kendala Tiket Saat Ini:\n"
                 . "- Nomor Tiket: {$ticket->nomor_tiket}\n"
                 . "- Kategori: {$ticket->kategori}\n"
-                . "- Deskripsi Kendala: {$ticket->deskripsi_kendala}\n"
-                . "- Dampak Operasional: {$ticket->dampak_operasional}\n"
-                . "- PIC: " . ($ticket->pic ?: 'Belum ditentukan') . "\n";
+                . "- Divisi / Toko: {$ticket->divisi_toko}\n"
+                . "- Deskripsi Kendala: " . ($ticket->deskripsi_kendala ?: 'Tidak ada deskripsi kendala') . "\n"
+                . "- Dampak Operasional: " . ($ticket->dampak_operasional ?: 'Tidak ada catatan dampak') . "\n"
+                . "- Tindakan Penanganan Sementara: " . ($ticket->tindakan_dilakukan ?: 'Belum dicatat') . "\n"
+                . "- PIC: " . ($ticket->pic ?: 'Belum ditentukan') . "\n"
+                . "- CATATAN INTERNAL / PROGRES TIM (PENTING): " . (!empty($catatan) ? "\"{$catatan}\"" : '(Tidak ada catatan internal)') . "\n";
+        } elseif (!empty($catatan)) {
+            $contextInfo = "Konteks Tiket:\n- Catatan Internal Tim (PENTING): \"{$catatan}\"\n";
         }
 
+        $hasImages = !empty($imageParts);
+
+        $promptInstruction = $hasImages
+            ? "Gambar yang dilampirkan adalah foto bukti fisik, screenshot percakapan perbaikan (WhatsApp), atau kondisi perangkat/sistem yang sudah kembali normal.\n"
+              . "Gunakan informasi dari bukti gambar DAN Catatan Internal / Progres Tim secara bersamaan untuk menyimpulkan penyelesaian secara utuh dan logis."
+            : "Saat ini tidak ada foto bukti yang dilampirkan. Analisis dan rumuskan penyelesaian secara cerdas dan logis berdasarkan Catatan Internal / Progres Tim dan Deskripsi Kendala yang tercatat di atas.";
+
         $prompt = <<<PROMPT
-Kamu adalah asisten IT Helpdesk profesional.
-Tugasmu adalah menganalisis tangkapan layar/foto bukti penyelesaian kendala teknis berikut ini.
+Kamu adalah asisten IT Helpdesk profesional senior.
+Tugasmu adalah menganalisis kendala dan merumuskan formulir penyelesaian tiket secara otomatis.
 
 {$contextInfo}
 
-Gambar yang dilampirkan adalah bukti perbaikan, screenshot konfirmasi penyelesaian kendala (misalnya percakapan WhatsApp/grup IT), atau foto fisik perangkat yang telah diperbaiki/berfungsi kembali.
+{$promptInstruction}
 
-Analisis gambar secara seksama dan rumuskan formulir penyelesaian tiket dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks tambahan):
+PANDUAN UTAMA:
+1. SANGAT PENTING - PERTIMBANGKAN CATATAN INTERNAL: Catatan internal berisi progres aktual dari teknisi atau staff di lapangan (misalnya: sparepart yang diganti, kabel yang diperbaiki, konfigurasi ulang, pemindahan perangkat, koordinasi vendor, dll). Solusi dan tindakan yang kamu rumuskan WAJIB selaras dan mencerminkan catatan tersebut.
+2. Rumuskan formulir penyelesaian tiket dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks pengantar atau penutup):
 
 {
-  "tindakan_dilakukan": "<tindakan atau langkah teknis penanganan yang telah dilakukan untuk memperbaiki kendala>",
-  "solusi_diberikan": "<solusi final yang diberikan atau konfirmasi kondisi perangkat/sistem yang sudah kembali normal>",
-  "root_cause": "<akar penyebab terjadinya masalah/kendala berdasarkan informasi pada bukti gambar atau analisis teknis IT>",
-  "tanggal_penyelesaian": "<tanggal selesai dalam format YYYY-MM-DD jika dapat disimpulkan dari waktu/tanggal bukti, jika tidak kembalikan null>"
+  "tindakan_dilakukan": "<tindakan atau langkah teknis penanganan yang telah dilakukan untuk memperbaiki kendala, selaras dengan catatan internal dan kendala>",
+  "solusi_diberikan": "<solusi final yang diberikan dan konfirmasi bahwa perangkat/sistem kini telah berfungsi normal>",
+  "root_cause": "<akar penyebab terjadinya masalah/kendala berdasarkan analisis teknis IT, catatan internal, dan bukti gambar jika ada>",
+  "tanggal_penyelesaian": "<tanggal selesai dalam format YYYY-MM-DD jika dapat disimpulkan dari waktu/tanggal bukti atau catatan, jika tidak kembalikan null>"
 }
 
 Aturan Pengisian:
-1. Berikan narasi yang jelas, profesional, ringkas, dan relevan dengan kendala yang dilaporkan.
-2. JANGAN gunakan tanda strip '-', 'belum diselesaikan', 'belum ada solusi', atau teks kosong. Ekstrak dan simpulkan solusi nyata dari bukti gambar tersebut.
-3. Pastikan bahasa Indonesia yang digunakan baku dan sesuai standar pelaporan IT Helpdesk.
+1. Berikan narasi yang jelas, profesional, ringkas, dan relevan dengan kendala dan catatan yang dilaporkan.
+2. JANGAN gunakan tanda strip '-', 'belum diselesaikan', 'belum ada solusi', atau teks kosong. Ekstrak dan simpulkan solusi nyata yang komprehensif.
+3. Pastikan bahasa Indonesia yang digunakan baku, lugas, dan sesuai standar pelaporan IT Helpdesk.
 PROMPT;
 
-        $parts = array_merge($imageParts, [['text' => $prompt]]);
+        $parts = $hasImages
+            ? array_merge($imageParts, [['text' => $prompt]])
+            : [['text' => $prompt]];
 
         $responseJson = $this->execute([
             'contents' => [

@@ -224,6 +224,16 @@
                 <span style="margin: 0 10px; color: var(--border);">|</span>
                 <strong>Dibuat:</strong> {{ $ticket->created_at->format('d/m/Y H:i') }}
             </div>
+
+            @if($ticket->catatan)
+            <div class="ticket-note-preview" onclick="event.stopPropagation(); openNoteModal({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode($ticket->catatan) }})" style="margin-top: 8px; padding: 6px 10px; background: #FFFBEB; border: 1px solid #FDE68A; border-left: 3px solid #F59E0B; border-radius: 6px; font-size: 12.5px; color: #92400E; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; transition: background 0.15s;" title="Klik untuk mengubah catatan">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" style="flex-shrink:0; margin-top:2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L16.5 3.5z"/></svg>
+                <div style="flex: 1; word-break: break-word; line-height: 1.45;">
+                    <strong style="color: #B45309; margin-right: 4px;">Notes:</strong>{{ $ticket->catatan }}
+                </div>
+                <span style="color: #D97706; font-size: 11px; font-weight: 600; text-decoration: underline; margin-left: 4px; flex-shrink: 0;">Ubah</span>
+            </div>
+            @endif
         </div>
 
         <!-- Aksi Kanan -->
@@ -232,12 +242,20 @@
             <button
                 class="btn btn-ghost btn-sm"
                 title="Tandai Closed"
-                onclick="event.stopPropagation(); closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d')]) }})"
+                onclick="event.stopPropagation(); closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d'), 'catatan' => $ticket->catatan]) }})"
                 style="color: #16A34A; border-color: #BBF7D0; background: #F0FDF4;"
             >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </button>
             @endif
+            <button
+                class="btn btn-ghost btn-sm"
+                title="{{ $ticket->catatan ? 'Ubah Catatan Tiket' : 'Tambah Catatan Tiket' }}"
+                onclick="event.stopPropagation(); openNoteModal({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode($ticket->catatan ?? '') }})"
+                style="color: #D97706; border-color: #FDE68A; background: {{ $ticket->catatan ? '#FEF3C7' : '#FFFBEB' }};"
+            >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+            </button>
             <a href="{{ route('tickets.edit', $ticket) }}" class="btn btn-ghost btn-sm" title="Edit Tiket" onclick="event.stopPropagation()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </a>
@@ -263,6 +281,7 @@
 </button>
 
 @include('tickets.partials.modal-close')
+@include('tickets.partials.modal-note')
 @endsection
 
 @push('scripts')

@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
     Route::post('/tickets/{ticket}/analyze-resolution', [TicketController::class, 'analyzeResolution'])->name('tickets.analyze-resolution');
     Route::post('/tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
+    Route::post('/tickets/{ticket}/note', [TicketController::class, 'updateNote'])->name('tickets.update-note');
     Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
     Route::get('/tickets/{ticket}/image/{index?}', [TicketController::class, 'image'])->name('tickets.image');
 
@@ -86,6 +87,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'updateCompany'])->name('companies.update');
         Route::delete('/companies/{company}', [\App\Http\Controllers\SuperAdminController::class, 'destroyCompany'])->name('companies.destroy');
         Route::post('/gemini/test-connection', [\App\Http\Controllers\SuperAdminController::class, 'testGeminiConnection'])->name('gemini.test');
+
+        // Export Database SQL
+        Route::get('/export-database', [\App\Http\Controllers\SuperAdminController::class, 'exportDatabase'])->name('export-database');
 
         // Managers
         Route::get('/managers', [\App\Http\Controllers\SuperAdminController::class, 'managers'])->name('managers');
