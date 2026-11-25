@@ -216,7 +216,7 @@
                     <div class="settings-info">
                         <div class="settings-label">Tampilkan Info Akun Demo</div>
                         <div class="settings-subtext">
-                            Menampilkan informasi bantuan kredensial default demo (<em>staff@gonote.id</em> & <em>admin@hsitoperasional.com</em>) di bawah tombol masuk pada halaman login.
+                            Menampilkan informasi bantuan kredensial default demo (<em>Staff IT</em>, <em>Manager IT</em> & <em>Super Admin</em>) di bawah tombol masuk pada halaman login.
                         </div>
                     </div>
                     <div>
@@ -236,9 +236,27 @@
                             </span>
                         </div>
 
-                        <div id="demo-preview-card" class="preview-demo-box {{ $showDemoCredentials ? '' : 'hidden-state' }}">
-                            Demo Staff: <strong>staff@gonote.id</strong> / <strong>password</strong> <br>
-                            Demo Admin: <strong>admin@hsitoperasional.com</strong> / <strong>admin</strong>
+                        <div id="demo-preview-card" class="preview-demo-box {{ $showDemoCredentials ? '' : 'hidden-state' }}" style="padding: 12px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary,#64748B);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;text-align:center;">
+                                Akun Demo (Klik untuk Isi Otomatis)
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #E2E8F0;border-radius:5px;padding:5px 8px;">
+                                    <span><strong>Staff IT:</strong> <code>it</code> / <code>it</code></span>
+                                    <span style="color:#2563EB;font-weight:600;font-size:10px;">Gunakan &rsaquo;</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #E2E8F0;border-radius:5px;padding:5px 8px;">
+                                    <span><strong>Manager IT:</strong> <code>managerit@gmail.com</code> / <code>password</code></span>
+                                    <span style="color:#2563EB;font-weight:600;font-size:10px;">Gunakan &rsaquo;</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #E2E8F0;border-radius:5px;padding:5px 8px;">
+                                    <span><strong>Super Admin:</strong> <code>superadmin@system.local</code> / <code>admin123</code></span>
+                                    <span style="color:#2563EB;font-weight:600;font-size:10px;">Gunakan &rsaquo;</span>
+                                </div>
+                            </div>
+                            <div style="margin-top:6px;font-size:10px;color:#94A3B8;text-align:center;">
+                                Tersedia juga alias: <em>staff@gonote.id</em> & <em>admin@hsitoperasional.com</em>
+                            </div>
                         </div>
                     </div>
                 </div>

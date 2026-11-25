@@ -113,11 +113,13 @@ Buka browser dan akses: `http://127.0.0.1:8000`
 
 ## 🔑 Akun Demo Default
 
-| Role | Email / Username | Password | Keterangan Akses |
+| Role | Email / Username | Password | Divisi & Keterangan Akses |
 |---|---|---|---|
-| **Admin / Manager** | `admin@hsitoperasional.com` | `admin` | Dashboard Manager, Users, Analisis AI, Settings |
-| **Manager IT** | `manager@gonote.id` | `password` | Dashboard Manager, Users, Analisis AI, Settings |
-| **Staff IT** | `it` *(atau `staff@gonote.id`)* | `it` *(atau `password`)* | Dashboard Tiket, Catat Tiket WhatsApp AI, Ekspor Excel |
+| **Super Admin** | `superadmin@system.local` | `admin123` | Kelola Multi Perusahaan, Export Database SQL, Master Sistem |
+| **Manager IT** | `managerit@gmail.com` *(alias `admin@hsitoperasional.com` / `admin`)* | `password` | Dashboard Manager IT, Monitoring Tiket, Analisis AI, Settings |
+| **Staff IT** | `it` *(alias `staff@gonote.id` / `password`)* | `it` | Operasional Tiket IT, Catatan Tiket, Pengecekan Toko, Ekspor Excel |
+| **Manager GA** | `managerga@gmail.com` | `password` | Dashboard Manager General Affairs, Monitoring Divisi GA |
+| **Staff GA** | `ga` | `ga` | Operasional Tiket CCTV & General Affairs |
 
 ---
 
