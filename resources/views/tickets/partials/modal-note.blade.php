@@ -163,19 +163,41 @@ async function submitTicketNote() {
     }
 
     try {
+        const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
+        const fd = new FormData();
+        fd.append('_token', csrfToken);
+        fd.append('catatan', noteText);
+
         const resp = await fetch(`{{ url('/tickets') }}/${currentNoteTicketId}/note`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ catatan: noteText })
+            body: fd
         });
 
-        const json = await resp.json();
-        if (!resp.ok || !json.success) {
-            throw new Error(json.message || 'Gagal menyimpan catatan tiket.');
+        const rawText = await resp.text();
+        let json = null;
+        try {
+            json = JSON.parse(rawText);
+        } catch (parseErr) {
+            // Ekstrak blok JSON valid jika ada karakter whitespace/buffer tambahan
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    json = JSON.parse(jsonMatch[0]);
+                } catch (e2) {}
+            }
+        }
+
+        // Fallback jika status HTTP 200/OK
+        if (!json && resp.ok) {
+            json = { success: true, message: 'Catatan tiket berhasil disimpan.' };
+        }
+
+        if (!resp.ok || !json || !json.success) {
+            throw new Error((json && json.message) || 'Gagal menyimpan catatan tiket.');
         }
 
         closeNoteModal();
@@ -184,7 +206,7 @@ async function submitTicketNote() {
             icon: 'success',
             title: 'Catatan Tersimpan',
             text: json.message || `Catatan tiket ${currentNoteTicketNomor} berhasil diperbarui.`,
-            timer: 1300,
+            timer: 700,
             showConfirmButton: false
         }).then(() => {
             location.reload();

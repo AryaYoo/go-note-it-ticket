@@ -473,6 +473,10 @@ class TicketController extends Controller
             ],
         ]);
 
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Catatan tiket berhasil disimpan.',
