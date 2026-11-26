@@ -127,9 +127,10 @@
             <div class="form-group">
                 <label class="form-label">Status Tiket <span class="required">*</span></label>
                 <select name="status" class="form-select" required>
-                    @foreach(['Open','Closed','Eskalasi'] as $s)
-                    <option value="{{ $s }}" {{ $ticket->status === $s ? 'selected' : '' }}>{{ $s }}</option>
-                    @endforeach
+                    <option value="Open" {{ $ticket->status === 'Open' ? 'selected' : '' }}>Open (Menunggu Penanganan)</option>
+                    <option value="Closed" {{ $ticket->status === 'Closed' ? 'selected' : '' }}>Closed (Selesai Remote / Pengarahan)</option>
+                    <option value="Selesai" {{ $ticket->status === 'Selesai' ? 'selected' : '' }}>Selesai (Selesai Hands-on / Tindakan Fisik)</option>
+                    <option value="Eskalasi" {{ $ticket->status === 'Eskalasi' ? 'selected' : '' }}>Eskalasi (Diteruskan ke Vendor / Tim Terkait)</option>
                 </select>
             </div>
         </div>
@@ -184,7 +185,7 @@ const editStatusSelect = document.querySelector('select[name="status"]');
 const editTglInput = document.querySelector('input[name="tanggal_penyelesaian"]');
 if (editStatusSelect && editTglInput) {
     editStatusSelect.addEventListener('change', function() {
-        if (this.value === 'Closed') {
+        if (this.value === 'Closed' || this.value === 'Selesai') {
             if (!editTglInput.value) {
                 editTglInput.value = new Date().toISOString().split('T')[0];
             }

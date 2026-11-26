@@ -14,7 +14,7 @@ class ManagerController extends Controller
         $openTickets      = \App\Models\Ticket::where('status', 'Open')->count();
         $inProgressTickets = \App\Models\Ticket::where('status', 'In Progress')->count();
         $resolvedTickets  = \App\Models\Ticket::where('status', 'Resolved')->count();
-        $closedTickets    = \App\Models\Ticket::where('status', 'Closed')->count();
+        $closedTickets    = \App\Models\Ticket::whereIn('status', ['Closed', 'Selesai'])->count();
 
         $ticketsByDivisi = \App\Models\Ticket::selectRaw('divisi_toko, count(*) as count')
             ->groupBy('divisi_toko')
@@ -130,9 +130,18 @@ class ManagerController extends Controller
         $requireEvidence = \App\Models\Setting::isTrue('ticket_require_evidence', false);
         $shareReportHeader = \App\Models\Setting::get('ticket_share_report_header', 'Open Ticket');
 
+        $companyId = auth()->user()->company_id;
+        $priorityRules = \App\Models\Setting::get('gemini_priority_rules', null, $companyId)
+            ?: \App\Services\GeminiService::getDefaultPriorityRules($companyId);
+        $statusRules = \App\Models\Setting::get('gemini_status_rules', null, $companyId)
+            ?: \App\Services\GeminiService::getDefaultStatusRules($companyId);
+        $actionRules = \App\Models\Setting::get('gemini_action_rules', null, $companyId)
+            ?: \App\Services\GeminiService::getDefaultActionRules($companyId);
+
         return view('manager.ticket-settings', compact(
             'prefix', 'defaultPriority', 'categories', 'slaHigh', 'slaMedium', 'slaLow',
-            'autoAiSuggestion', 'requireEvidence', 'shareReportHeader'
+            'autoAiSuggestion', 'requireEvidence', 'shareReportHeader',
+            'priorityRules', 'statusRules', 'actionRules'
         ));
     }
 
@@ -145,6 +154,9 @@ class ManagerController extends Controller
             'ticket_sla_high' => 'required|numeric|min:1',
             'ticket_sla_medium' => 'required|numeric|min:1',
             'ticket_sla_low' => 'required|numeric|min:1',
+            'gemini_priority_rules' => 'nullable|string',
+            'gemini_status_rules' => 'nullable|string',
+            'gemini_action_rules' => 'nullable|string',
         ]);
 
         \App\Models\Setting::set('ticket_prefix', strtoupper(trim($request->ticket_prefix)));
@@ -157,7 +169,17 @@ class ManagerController extends Controller
         \App\Models\Setting::set('ticket_require_evidence', $request->boolean('ticket_require_evidence') ? '1' : '0');
         \App\Models\Setting::set('ticket_share_report_header', trim($request->input('ticket_share_report_header', 'Open Ticket')));
 
-        return redirect()->route('manager.ticket-settings')->with('success', 'Pengaturan tiket berhasil diperbarui.');
+        if ($request->has('gemini_priority_rules')) {
+            \App\Models\Setting::set('gemini_priority_rules', trim($request->input('gemini_priority_rules')));
+        }
+        if ($request->has('gemini_status_rules')) {
+            \App\Models\Setting::set('gemini_status_rules', trim($request->input('gemini_status_rules')));
+        }
+        if ($request->has('gemini_action_rules')) {
+            \App\Models\Setting::set('gemini_action_rules', trim($request->input('gemini_action_rules')));
+        }
+
+        return redirect()->route('manager.ticket-settings')->with('success', 'Pengaturan tiket dan panduan rules AI berhasil diperbarui.');
     }
 
     public function settings()

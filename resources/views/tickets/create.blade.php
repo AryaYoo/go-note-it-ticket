@@ -235,9 +235,10 @@
                 <div class="form-group">
                     <label class="form-label">Status Tiket <span class="required">*</span></label>
                     <select name="status" id="f-status" class="form-select" required>
-                        <option value="Open" selected>Open</option>
-                        <option value="Closed">Closed</option>
-                        <option value="Eskalasi">Eskalasi</option>
+                        <option value="Open" selected>Open (Menunggu Penanganan)</option>
+                        <option value="Closed">Closed (Selesai Remote / Pengarahan)</option>
+                        <option value="Selesai">Selesai (Selesai Hands-on / Tindakan Fisik)</option>
+                        <option value="Eskalasi">Eskalasi (Diteruskan ke Vendor / Tim Terkait)</option>
                     </select>
                 </div>
             </div>
@@ -698,8 +699,8 @@ btnAnalyze.addEventListener('click', async () => {
         if (d.status)               setSelect('f-status', d.status);
         if (d.tindakan_dilakukan)   setValue('f-tindakan_dilakukan', d.tindakan_dilakukan);
         
-        // Tanggal Penyelesaian: jika status Closed, selalu isi default ke tanggal hari ini (waktu saat ini)
-        if (d.status === 'Closed') {
+        // Tanggal Penyelesaian: jika status Closed atau Selesai, selalu isi default ke tanggal hari ini (waktu saat ini)
+        if (d.status === 'Closed' || d.status === 'Selesai') {
             const today = new Date().toISOString().split('T')[0];
             setValue('f-tanggal_penyelesaian', today);
         } else {
@@ -753,7 +754,7 @@ if (statusEl) {
     statusEl.addEventListener('change', function() {
         const tglEl = document.getElementById('f-tanggal_penyelesaian');
         if (tglEl) {
-            if (this.value === 'Closed') {
+            if (this.value === 'Closed' || this.value === 'Selesai') {
                 if (!tglEl.value) {
                     tglEl.value = new Date().toISOString().split('T')[0];
                 }

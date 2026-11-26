@@ -87,7 +87,7 @@
                         <label class="form-label">Status Tiket</label>
                         <select name="status" class="form-select">
                             <option value="">Semua Status</option>
-                            @foreach(['Open','Closed','Eskalasi'] as $s)
+                            @foreach(['Open','Closed','Selesai','Eskalasi'] as $s)
                             <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ $s }}</option>
                             @endforeach
                         </select>
@@ -238,10 +238,10 @@
 
         <!-- Aksi Kanan -->
         <div class="actions" style="display: flex; gap: 8px;">
-            @if($ticket->status !== 'Closed')
+            @if(!in_array($ticket->status, ['Closed', 'Selesai']))
             <button
                 class="btn btn-ghost btn-sm"
-                title="Tandai Closed"
+                title="Tandai Selesai / Closed"
                 onclick="event.stopPropagation(); closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d'), 'catatan' => $ticket->catatan]) }})"
                 style="color: #16A34A; border-color: #BBF7D0; background: #F0FDF4;"
             >
@@ -517,7 +517,7 @@ async function shareTicketText() {
     const dateShort  = `${mm}/${dd}/${yyyy.slice(2)}`; // e.g. 10/21/26
 
     // Hanya tiket yang belum ditutup (Open / Eskalasi)
-    const openTickets = tickets.filter(t => t.status !== 'Closed');
+    const openTickets = tickets.filter(t => t.status !== 'Closed' && t.status !== 'Selesai');
 
     // Helper: format lokasi dan nama toko
     const formatLocationTitle = (str) => {

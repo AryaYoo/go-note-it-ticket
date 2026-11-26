@@ -103,11 +103,11 @@ class TicketController extends Controller
             if (!empty($itemIds)) {
                 $checkItems = \App\Models\DailyCheckItem::with('device.tickets')->whereIn('id', $itemIds)->get();
                 foreach ($checkItems as $ci) {
-                    $existingOpenTicket = $ci->device?->tickets()->where('status', '!=', 'Closed')->latest('tickets.id')->first();
+                    $existingOpenTicket = $ci->device?->tickets()->whereNotIn('status', ['Closed', 'Selesai'])->latest('tickets.id')->first();
                     if ($existingOpenTicket) {
                         return response()->json([
                             'success' => false,
-                            'message' => "Perangkat '{$ci->device->display_name}' masih memiliki tiket aktif (#{$existingOpenTicket->nomor_tiket}) yang belum Closed. Tidak bisa membuat tiket baru sampai tiket tersebut Closed.",
+                            'message' => "Perangkat '{$ci->device->display_name}' masih memiliki tiket aktif (#{$existingOpenTicket->nomor_tiket}) yang belum diselesaikan. Tidak bisa membuat tiket baru sampai tiket tersebut selesai.",
                         ], 422);
                     }
                 }
@@ -278,11 +278,12 @@ class TicketController extends Controller
     {
         Gate::authorize('update', $ticket);
 
-        if ($ticket->status === 'Closed') {
-            return response()->json(['success' => false, 'message' => 'Tiket sudah berstatus Closed.'], 422);
+        if ($ticket->isResolved()) {
+            return response()->json(['success' => false, 'message' => "Tiket sudah berstatus {$ticket->status}."], 422);
         }
 
         $request->validate([
+            'status'               => 'nullable|in:Closed,Selesai',
             'tanggal_penyelesaian' => 'nullable|date',
             'tindakan_dilakukan'   => 'nullable|string',
             'solusi_diberikan'     => 'nullable|string',
@@ -291,12 +292,13 @@ class TicketController extends Controller
             'lampiran_gambar.*'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
         ]);
 
+        $finalStatus = $request->input('status', 'Closed');
         $closedDate = $request->input('tanggal_penyelesaian') ?: now()->toDateString();
         $oldStatus = $ticket->status;
         $oldClosedDate = $ticket->tanggal_penyelesaian ? $ticket->tanggal_penyelesaian->format('Y-m-d') : null;
 
         $updateData = [
-            'status'               => 'Closed',
+            'status'               => $finalStatus,
             'tanggal_penyelesaian' => $closedDate,
         ];
 
@@ -327,7 +329,7 @@ class TicketController extends Controller
 
         $ticket->update($updateData);
 
-        $desc = "Status diubah dari '{$oldStatus}' menjadi 'Closed' (Tgl Selesai: " . date('d/m/Y', strtotime($closedDate)) . ")";
+        $desc = "Status diubah dari '{$oldStatus}' menjadi '{$finalStatus}' (Tgl Selesai: " . date('d/m/Y', strtotime($closedDate)) . ")";
         if ($newPhotosCount > 0) {
             $desc .= "; Ditambahkan {$newPhotosCount} foto bukti penyelesaian";
         }
@@ -342,12 +344,12 @@ class TicketController extends Controller
             'action'      => 'status_changed',
             'description' => $desc,
             'changes'     => [
-                'status'               => ['old' => $oldStatus, 'new' => 'Closed'],
+                'status'               => ['old' => $oldStatus, 'new' => $finalStatus],
                 'tanggal_penyelesaian' => ['old' => $oldClosedDate, 'new' => $closedDate],
             ],
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Tiket berhasil ditutup.']);
+        return response()->json(['success' => true, 'message' => "Tiket berhasil ditutup sebagai {$finalStatus}."]);
     }
 
     /**

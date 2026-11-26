@@ -37,7 +37,7 @@ class UpdateTicketRequest extends FormRequest
             'lampiran_gambar'     => 'nullable|array|max:3',
             'lampiran_gambar.*'   => 'image|mimes:jpg,jpeg,png,webp|max:10240',
             'pic'                 => 'nullable|string|max:150',
-            'status'              => 'required|in:Open,Closed,Eskalasi',
+            'status'              => 'required|in:Open,Closed,Selesai,Eskalasi',
             'tindakan_dilakukan'  => 'nullable|string',
             'tanggal_penyelesaian' => 'nullable|date',
             'solusi_diberikan'    => 'nullable|string',

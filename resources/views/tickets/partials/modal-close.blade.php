@@ -43,25 +43,46 @@
                 </div>
             </div>
 
-            {{-- Field Tanggal Penyelesaian --}}
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-weight: 600; color: var(--text);">
-                    Tanggal Penutupan / Penyelesaian <span class="required" style="color:#DC2626;">*</span>
-                </label>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input 
-                        type="date" 
-                        id="cm-tgl-penyelesaian" 
-                        class="form-input" 
-                        style="width: 100%; max-width: 260px; font-weight: 500;"
-                        required
-                    >
-                    <span style="font-size: 11.5px; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 4px 8px; border-radius: 4px; white-space: nowrap;">
-                        ✓ Tanggal Sekarang
-                    </span>
+            {{-- Field Tanggal Penyelesaian & Klasifikasi Status --}}
+            <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; align-items: start;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-weight: 600; color: var(--text);">
+                        Tanggal Penyelesaian <span class="required" style="color:#DC2626;">*</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input 
+                            type="date" 
+                            id="cm-tgl-penyelesaian" 
+                            class="form-input" 
+                            style="width: 100%; font-weight: 500;"
+                            required
+                        >
+                    </div>
+                    <div class="form-hint" style="font-size: 11px; margin-top: 3px;">
+                        Otomatis terisi tanggal hari ini saat modal dibuka.
+                    </div>
                 </div>
-                <div class="form-hint" style="font-size: 11px; margin-top: 3px;">
-                    Otomatis terisi tanggal hari ini saat modal dibuka.
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-weight: 600; color: var(--text);">
+                        Klasifikasi Status Akhir <span class="required" style="color:#DC2626;">*</span>
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <label id="cm-card-closed" style="display:flex; align-items:flex-start; gap:7px; padding:7px 9px; border:2px solid #16A34A; border-radius:6px; cursor:pointer; background:#F0FDF4; transition:all 0.15s ease;">
+                            <input type="radio" name="cm_status" value="Closed" checked style="margin-top:2px;" onchange="updateCloseStatusChoice()">
+                            <div>
+                                <div style="font-weight:700; font-size:11.5px; color:#15803D;">Closed (Remote)</div>
+                                <div style="font-size:10px; color:#166534; line-height:1.3; margin-top:1px;">Panduan / arahan jarak jauh.</div>
+                            </div>
+                        </label>
+                        <label id="cm-card-selesai" style="display:flex; align-items:flex-start; gap:7px; padding:7px 9px; border:1px solid #E2E8F0; border-radius:6px; cursor:pointer; background:#F8FAFC; transition:all 0.15s ease;">
+                            <input type="radio" name="cm_status" value="Selesai" style="margin-top:2px;" onchange="updateCloseStatusChoice()">
+                            <div>
+                                <div style="font-weight:700; font-size:11.5px; color:#475569;">Selesai (Hands-on)</div>
+                                <div style="font-size:10px; color:#64748B; line-height:1.3; margin-top:1px;">Tindakan fisik / visit langsung.</div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -253,6 +274,32 @@ function compressSlotImage(file, maxWidth = 1600, quality = 0.82) {
 }
 
 /**
+ * Update UI highlight status pilihan tutup tiket
+ */
+function updateCloseStatusChoice() {
+    const val = document.querySelector('input[name="cm_status"]:checked')?.value || 'Closed';
+    const cardClosed = document.getElementById('cm-card-closed');
+    const cardSelesai = document.getElementById('cm-card-selesai');
+    if (cardClosed && cardSelesai) {
+        if (val === 'Closed') {
+            cardClosed.style.borderColor = '#16A34A';
+            cardClosed.style.background = '#F0FDF4';
+            cardClosed.querySelector('div > div:first-child').style.color = '#15803D';
+            cardSelesai.style.borderColor = '#E2E8F0';
+            cardSelesai.style.background = '#F8FAFC';
+            cardSelesai.querySelector('div > div:first-child').style.color = '#475569';
+        } else {
+            cardSelesai.style.borderColor = '#0D9488';
+            cardSelesai.style.background = '#F0FDFA';
+            cardSelesai.querySelector('div > div:first-child').style.color = '#0F766E';
+            cardClosed.style.borderColor = '#E2E8F0';
+            cardClosed.style.background = '#F8FAFC';
+            cardClosed.querySelector('div > div:first-child').style.color = '#475569';
+        }
+    }
+}
+
+/**
  * Buka modal tutup tiket
  */
 function openCloseTicketModal(id, nomor, initialData = {}) {
@@ -261,6 +308,13 @@ function openCloseTicketModal(id, nomor, initialData = {}) {
     currentCloseTicketNotes = initialData.catatan || '';
     closeTicketSlots = [null, null, null];
     activeSlotIndex = 0;
+
+    // Reset status selection to Closed
+    const defaultRadio = document.querySelector('input[name="cm_status"][value="Closed"]');
+    if (defaultRadio) {
+        defaultRadio.checked = true;
+        updateCloseStatusChoice();
+    }
 
     // Header info
     document.getElementById('cm-nomor-badge').textContent = nomor;
@@ -659,6 +713,15 @@ async function analyzeCloseModalImages() {
         applyAiField('cm-tindakan', 'badge-ai-tindakan', data.tindakan_dilakukan);
         applyAiField('cm-rootcause', 'badge-ai-rootcause', data.root_cause);
 
+        // Jika AI mendeteksi status penyelesaian tertentu (Closed vs Selesai)
+        if (data.status) {
+            const rad = document.querySelector(`input[name="cm_status"][value="${data.status}"]`);
+            if (rad) {
+                rad.checked = true;
+                updateCloseStatusChoice();
+            }
+        }
+
         // Jika AI mendeteksi tanggal penyelesaian tertentu
         if (data.tanggal_penyelesaian) {
             const tglInput = document.getElementById('cm-tgl-penyelesaian');
@@ -698,7 +761,9 @@ async function submitCloseTicket() {
     btnSubmit.disabled = true;
     btnSubmit.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span> Menyimpan...`;
 
+    const finalStatus = document.querySelector('input[name="cm_status"]:checked')?.value || 'Closed';
     const fd = new FormData();
+    fd.append('status', finalStatus);
     fd.append('tanggal_penyelesaian', tgl);
     fd.append('solusi_diberikan', document.getElementById('cm-solusi').value);
     fd.append('tindakan_dilakukan', document.getElementById('cm-tindakan').value);

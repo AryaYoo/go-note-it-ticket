@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $stats = [
             'total'    => Ticket::count(),
             'open'     => Ticket::where('status', 'Open')->count(),
-            'closed'   => Ticket::where('status', 'Closed')->count(),
+            'closed'   => Ticket::whereIn('status', ['Closed', 'Selesai'])->count(),
             'eskalasi' => Ticket::where('status', 'Eskalasi')->count(),
         ];
 

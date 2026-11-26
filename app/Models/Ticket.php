@@ -153,9 +153,25 @@ class Ticket extends Model
         return match($this->status) {
             'Open'     => 'badge-open',
             'Closed'   => 'badge-closed',
+            'Selesai'  => 'badge-selesai',
             'Eskalasi' => 'badge-eskalasi',
             default    => 'badge-open',
         };
+    }
+
+    public function isResolved(): bool
+    {
+        return in_array($this->status, ['Closed', 'Selesai']);
+    }
+
+    public function scopeOpenOrPending(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', ['Closed', 'Selesai']);
+    }
+
+    public function scopeResolved(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['Closed', 'Selesai']);
     }
 
     public function prioritasBadgeClass(): string

@@ -28,9 +28,9 @@ class DailyCheckController extends Controller
             ['user_id' => Auth::id()]
         );
 
-        // Ambil semua device aktif dengan tiket yang masih Open / belum Closed
+        // Ambil semua device aktif dengan tiket yang masih Open / belum selesai (bukan Closed atau Selesai)
         $devices = Device::with(['store', 'tickets' => function ($q) {
-            $q->where('status', '!=', 'Closed')->latest('tickets.id');
+            $q->whereNotIn('status', ['Closed', 'Selesai'])->latest('tickets.id');
         }])
             ->where('company_id', $companyId)
             ->where('is_active', true)
@@ -64,12 +64,12 @@ class DailyCheckController extends Controller
                     $item->update($updates);
                 }
             } else {
-                // Tiket sudah Closed atau belum pernah ada tiket untuk tim ini.
+                // Tiket sudah selesai (Closed/Selesai) atau belum pernah ada tiket untuk tim ini.
                 // Hanya reset status jika perangkat benar-benar TIDAK memiliki tiket aktif apapun di tabel ticket_devices
                 $hasAnyOpenTicketInCompany = DB::table('ticket_devices')
                     ->join('tickets', 'ticket_devices.ticket_id', '=', 'tickets.id')
                     ->where('ticket_devices.device_id', $device->id)
-                    ->where('tickets.status', '!=', 'Closed')
+                    ->whereNotIn('tickets.status', ['Closed', 'Selesai'])
                     ->whereNull('tickets.deleted_at')
                     ->exists();
 
@@ -117,8 +117,8 @@ class DailyCheckController extends Controller
         foreach ($request->input('items') as $itemData) {
             $item = DailyCheckItem::with('device.tickets')->findOrFail($itemData['id']);
 
-            // Cek apakah device memiliki tiket yang masih Open / belum Closed
-            $hasOpenTicket = $item->device?->tickets()->where('status', '!=', 'Closed')->exists();
+            // Cek apakah device memiliki tiket yang masih Open / belum selesai
+            $hasOpenTicket = $item->device?->tickets()->whereNotIn('status', ['Closed', 'Selesai'])->exists();
 
             if ($hasOpenTicket) {
                 // Jika tiketnya masih Open, perangkat harus tetap offline dan result ticket_created
@@ -154,12 +154,12 @@ class DailyCheckController extends Controller
             'notes'  => 'nullable|string|max:500',
         ]);
 
-        // Cek jika ada tiket aktif yang belum Closed
-        $openTicket = $item->device?->tickets()->where('status', '!=', 'Closed')->latest('tickets.id')->first();
+        // Cek jika ada tiket aktif yang belum selesai
+        $openTicket = $item->device?->tickets()->whereNotIn('status', ['Closed', 'Selesai'])->latest('tickets.id')->first();
         if ($openTicket) {
             return response()->json([
                 'success' => false,
-                'message' => "Perangkat ini memiliki tiket aktif (#{$openTicket->nomor_tiket}) yang belum Closed. Selesaikan tiket terlebih dahulu.",
+                'message' => "Perangkat ini memiliki tiket aktif (#{$openTicket->nomor_tiket}) yang belum diselesaikan. Selesaikan tiket terlebih dahulu.",
             ], 422);
         }
 
@@ -186,14 +186,14 @@ class DailyCheckController extends Controller
         $itemIds = $request->input('item_ids');
         $items   = DailyCheckItem::with(['device.store', 'device.tickets'])->findMany($itemIds);
 
-        // Validasi: pastikan tidak ada device yang masih memiliki tiket aktif (belum Closed)
+        // Validasi: pastikan tidak ada device yang masih memiliki tiket aktif (belum selesai)
         foreach ($items as $item) {
-            $openTicket = $item->device?->tickets()->where('status', '!=', 'Closed')->latest('tickets.id')->first();
+            $openTicket = $item->device?->tickets()->whereNotIn('status', ['Closed', 'Selesai'])->latest('tickets.id')->first();
             if ($openTicket) {
                 $deviceName = $item->device->alias ?: ($item->device->type . ' ' . ($item->device->model ?? ''));
                 return response()->json([
                     'success' => false,
-                    'message' => "Perangkat '{$deviceName}' masih memiliki tiket aktif (#{$openTicket->nomor_tiket}) yang belum Closed. Tidak bisa membuat tiket baru sampai tiket tersebut Closed.",
+                    'message' => "Perangkat '{$deviceName}' masih memiliki tiket aktif (#{$openTicket->nomor_tiket}) yang belum diselesaikan. Tidak bisa membuat tiket baru sampai tiket tersebut selesai.",
                 ], 422);
             }
         }
@@ -241,12 +241,12 @@ class DailyCheckController extends Controller
         $itemIds = $request->input('item_ids');
         $items   = DailyCheckItem::with(['device.store', 'device.tickets'])->findMany($itemIds);
 
-        // Hanya proses yang belum memiliki tiket dan devicenya tidak memiliki tiket aktif yang belum Closed
+        // Hanya proses yang belum memiliki tiket dan devicenya tidak memiliki tiket aktif yang belum selesai
         $unprocessedItems = $items->filter(function ($item) {
             if ($item->result === DailyCheckItem::RESULT_TICKET_CREATED) {
                 return false;
             }
-            $hasOpenTicket = $item->device?->tickets()->where('status', '!=', 'Closed')->exists();
+            $hasOpenTicket = $item->device?->tickets()->whereNotIn('status', ['Closed', 'Selesai'])->exists();
             return !$hasOpenTicket;
         });
 

@@ -109,5 +109,19 @@ class UserSeeder extends Seeder
                 'manager_id' => null,
             ]
         );
+
+        // 7. Seed Default Notulen Rules untuk Company 2 (General Affairs)
+        \App\Models\Setting::updateOrCreate(
+            ['company_id' => 2, 'key' => 'gemini_priority_rules'],
+            ['value' => \App\Services\GeminiService::getDefaultPriorityRules(2)]
+        );
+        \App\Models\Setting::updateOrCreate(
+            ['company_id' => 2, 'key' => 'gemini_status_rules'],
+            ['value' => \App\Services\GeminiService::getDefaultStatusRules(2)]
+        );
+        \App\Models\Setting::updateOrCreate(
+            ['company_id' => 2, 'key' => 'gemini_action_rules'],
+            ['value' => \App\Services\GeminiService::getDefaultActionRules(2)]
+        );
     }
 }

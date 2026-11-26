@@ -76,6 +76,64 @@ class GeminiService
     }
 
     /**
+     * Default rules untuk prioritas AI berdasarkan ID company / divisi.
+     */
+    public static function getDefaultPriorityRules(?int $companyId = null): string
+    {
+        if ($companyId === 2) {
+            return "- High:\n"
+                . "  * HDD atau media penyimpanan CCTV / sistem tidak terdeteksi.\n"
+                . "  * Minimal 2 kamera CCTV tidak terdeteksi / offline dan berdampak pada operasional divisi lain.\n"
+                . "  * Gangguan modem atau koneksi internet yang menghambat kelancaran transaksi toko.\n"
+                . "  * Perangkat masih mati meskipun langkah pertolongan pertama (troubleshooting awal) sudah dilakukan.\n"
+                . "  * Printer macet (khusus jika perangkat harus segera digunakan saat itu juga untuk operasional).\n"
+                . "- Medium:\n"
+                . "  * Kesalahan pengisian paket data/kuota modem, namun koneksi masih dapat dialihkan (switch) ke jalur cadangan (backup).\n"
+                . "- Low:\n"
+                . "  * Gangguan minor atau kendala kecil yang tidak menghambat transaksi utama dan operasional toko.";
+        }
+
+        return "- High: menghambat operasional toko secara total (kasir mati, tidak bisa transaksi)\n"
+            . "- Medium: mengganggu sebagian operasional (fitur tertentu error tapi toko bisa beroperasi)\n"
+            . "- Low: gangguan kecil, tidak menghambat operasional";
+    }
+
+    /**
+     * Default rules untuk klasifikasi status AI berdasarkan ID company / divisi.
+     */
+    public static function getDefaultStatusRules(?int $companyId = null): string
+    {
+        if ($companyId === 2) {
+            return "- Open: Kendala baru dilaporkan atau masih dalam proses identifikasi.\n"
+                . "- Closed: Penanganan selesai cukup melalui pengarahan atau panduan jarak jauh (remote).\n"
+                . "- Selesai: Penanganan membutuhkan tindakan fisik langsung di lokasi (hands-on).\n"
+                . "- Eskalasi: Penanganan diteruskan ke pihak terkait (Mujib, Adit, atau Vendor) dengan koordinasi follow-up melalui Kak Gilang.";
+        }
+
+        return "- Open: Kendala baru atau sedang berlangsung.\n"
+            . "- Closed: Penanganan selesai cukup melalui pengarahan/panduan jarak jauh (remote).\n"
+            . "- Selesai: Penanganan membutuhkan tindakan langsung di lokasi (hands-on).\n"
+            . "- Eskalasi: Kendala diteruskan ke pihak spesialis / vendor pihak ketiga.";
+    }
+
+    /**
+     * Default rules untuk SOP tindakan & alur operasional AI berdasarkan ID company / divisi.
+     */
+    public static function getDefaultActionRules(?int $companyId = null): string
+    {
+        if ($companyId === 2) {
+            return "- Fokus Penanganan di Head Office: Seluruh penanganan dipusatkan dari Head Office terlebih dahulu. Kunjungan lokasi (visit) hanya dilakukan jika kendala bersifat urgent dan membutuhkan penanganan fisik langsung.\n"
+                . "- Batas Waktu (SLA) Visit: Jika perangkat tetap mati selama 2 hari berturut-turut, tim wajib menjadwalkan visit fisik.\n"
+                . "- Penjadwalan: Seluruh pengaturan jadwal (schedule) visit dan penugasan menjadi tanggung jawab Kak Gilang.\n"
+                . "- Pengajuan Jaringan 5G: Seluruh permintaan (request) layanan/perangkat 5G wajib diajukan melalui sistem Ajuin.\n"
+                . "- Monitoring Modem: Lakukan pemantauan rutin terhadap progres pengadaan atau aktivasi modem 5G.\n"
+                . "- Jika kendala terkait modem mati, offline, atau internet toko terputus, rekomendasi tindakan mencakup: isi ulang kuota modem / cek sisa paket data, lalu coba restart modem.";
+        }
+
+        return "- Jika kendala terkait modem mati, offline, atau internet toko terputus, pastikan rekomendasi tindakan mencakup: isi ulang kuota modem / cek sisa paket data, lalu coba restart modem.";
+    }
+
+    /**
      * Analisis satu atau beberapa tangkapan layar WhatsApp (maks 3 gambar).
      *
      * @param  string[] $imagePaths Array path file gambar
@@ -103,8 +161,18 @@ class GeminiService
             ? "Terdapat {$jumlahGambar} tangkapan layar percakapan WhatsApp yang menggambarkan laporan kendala yang sama atau berkesinambungan."
             : 'Terdapat 1 tangkapan layar percakapan WhatsApp.';
 
+        $company = $this->company ?? auth()->user()?->company;
+        $companyId = $company?->id ?? auth()->user()?->company_id;
+
+        $priorityRules = Setting::get('gemini_priority_rules', null, $companyId)
+            ?: self::getDefaultPriorityRules($companyId);
+        $statusRules   = Setting::get('gemini_status_rules', null, $companyId)
+            ?: self::getDefaultStatusRules($companyId);
+        $actionRules   = Setting::get('gemini_action_rules', null, $companyId)
+            ?: self::getDefaultActionRules($companyId);
+
         $prompt = <<<PROMPT
-Kamu adalah asisten IT Helpdesk. {$keteranganGambar} Analisis seluruh gambar secara menyeluruh.
+Kamu adalah asisten IT Helpdesk & Operasional cerdas. {$keteranganGambar} Analisis seluruh gambar secara menyeluruh.
 
 Ekstrak informasi dan kembalikan HANYA dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks tambahan apapun):
 
@@ -113,17 +181,21 @@ Ekstrak informasi dan kembalikan HANYA dalam format JSON murni (tanpa markdown, 
   "prioritas": "<salah satu: Low | Medium | High>",
   "deskripsi_kendala": "<ringkasan singkat kendala yang dilaporkan>",
   "dampak_operasional": "<dampak nyata terhadap operasional toko>",
-  "status": "<salah satu: Open | Closed | Eskalasi>",
-  "tindakan_dilakukan": "<tindakan penanganan yang sudah dilakukan jika ada, kosongkan jika tidak ada>",
-  "tanggal_penyelesaian": "<tanggal selesai format YYYY-MM-DD jika masalah sudah selesai, null jika belum>",
+  "status": "<salah satu: Open | Closed | Selesai | Eskalasi>",
+  "tindakan_dilakukan": "<tindakan penanganan yang sudah dilakukan jika ada, atau rekomendasi tindakan berdasarkan SOP>",
+  "tanggal_penyelesaian": "<tanggal selesai format YYYY-MM-DD jika masalah sudah selesai (Closed/Selesai), null jika belum>",
   "solusi_diberikan": "<solusi yang diberikan jika sudah selesai, kosongkan jika belum>",
   "root_cause": "<akar penyebab masalah jika diketahui, kosongkan jika belum>"
 }
 
-Panduan penentuan prioritas:
-- High: menghambat operasional toko secara total (kasir mati, tidak bisa transaksi)
-- Medium: mengganggu sebagian operasional (fitur tertentu error tapi toko bisa beroperasi)
-- Low: gangguan kecil, tidak menghambat operasional
+ATURAN TINGKAT PRIORITAS DIVISI (Ikuti aturan ini secara ketat):
+{$priorityRules}
+
+ATURAN KLASIFIKASI STATUS:
+{$statusRules}
+
+SOP TINDAKAN & ALUR PENANGANAN OPERASIONAL:
+{$actionRules}
 
 Panduan kategori:
 - POS: masalah pada sistem kasir / Point of Sale
@@ -133,10 +205,7 @@ Panduan kategori:
 - CCTV: masalah pada kamera pengawas CCTV, DVR/NVR, atau monitoring video
 - Lainnya: masalah jaringan, internet, atau lainnya
 
-Panduan tindakan untuk modem / internet:
-- Jika kendala terkait modem mati, offline, atau internet toko terputus, pastikan rekomendasi tindakan mencakup: isi ulang kuota modem / cek sisa paket data, lalu coba restart modem.
-
-Jika informasi tidak cukup untuk menentukan suatu field, gunakan nilai terbaik yang dapat kamu simpulkan dari konteks.
+Jika informasi tidak cukup untuk menentukan suatu field, gunakan nilai terbaik yang dapat kamu simpulkan dari konteks dan aturan di atas.
 PROMPT;
 
         $parts = array_merge($imageParts, [['text' => $prompt]]);
@@ -163,8 +232,8 @@ PROMPT;
             throw new \RuntimeException('Respons AI tidak dapat diproses. Coba ulangi analisis.');
         }
 
-        // Tanggal penyelesaian selalu default ke tanggal saat ini (hari ini) jika status Closed
-        if (isset($data['status']) && strtolower($data['status']) === 'closed') {
+        // Tanggal penyelesaian selalu default ke tanggal saat ini (hari ini) jika status Closed atau Selesai
+        if (isset($data['status']) && in_array(strtolower($data['status']), ['closed', 'selesai'])) {
             $data['tanggal_penyelesaian'] = now()->format('Y-m-d');
         } else {
             $data['tanggal_penyelesaian'] = null;
@@ -232,9 +301,13 @@ Tugasmu adalah menganalisis kendala dan merumuskan formulir penyelesaian tiket s
 
 PANDUAN UTAMA:
 1. SANGAT PENTING - PERTIMBANGKAN CATATAN INTERNAL: Catatan internal berisi progres aktual dari teknisi atau staff di lapangan (misalnya: sparepart yang diganti, kabel yang diperbaiki, konfigurasi ulang, pemindahan perangkat, koordinasi vendor, dll). Solusi dan tindakan yang kamu rumuskan WAJIB selaras dan mencerminkan catatan tersebut.
-2. Rumuskan formulir penyelesaian tiket dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks pengantar atau penutup):
+2. Klasifikasi Status Akhir:
+   - Closed: jika penanganan selesai cukup melalui arahan / remote / panduan jarak jauh.
+   - Selesai: jika penanganan membutuhkan tindakan fisik langsung di lokasi (hands-on / pergantian hardware / visit).
+3. Rumuskan formulir penyelesaian tiket dalam format JSON murni (tanpa markdown, tanpa ```json, tanpa teks pengantar atau penutup):
 
 {
+  "status": "<salah satu: Closed | Selesai>",
   "tindakan_dilakukan": "<tindakan atau langkah teknis penanganan yang telah dilakukan untuk memperbaiki kendala, selaras dengan catatan internal dan kendala>",
   "solusi_diberikan": "<solusi final yang diberikan dan konfirmasi bahwa perangkat/sistem kini telah berfungsi normal>",
   "root_cause": "<akar penyebab terjadinya masalah/kendala berdasarkan analisis teknis IT, catatan internal, dan bukti gambar jika ada>",

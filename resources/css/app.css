@@ -412,6 +412,7 @@ body.sidebar-collapsed .main-content {
 }
 .badge-open     { background: #E0F2FE; color: var(--info); }
 .badge-closed   { background: #F0FDF4; color: var(--success); }
+.badge-selesai  { background: #ECFDF5; color: #047857; }
 .badge-eskalasi { background: #FEF2F2; color: var(--danger); }
 .badge-low      { background: #F0FDF4; color: var(--success); }
 .badge-medium   { background: #FFFBEB; color: var(--warning); }

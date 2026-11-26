@@ -16,7 +16,7 @@
         </div>
     </div>
     <div class="flex gap-8">
-        @if($ticket->status !== 'Closed')
+        @if(!in_array($ticket->status, ['Closed', 'Selesai']))
         <button type="button" class="btn btn-sm" onclick="closeTicket({{ $ticket->id }}, '{{ $ticket->nomor_tiket }}', {{ json_encode(['tindakan' => $ticket->tindakan_dilakukan, 'solusi' => $ticket->solusi_diberikan, 'rootCause' => $ticket->root_cause, 'tanggalPenyelesaian' => $ticket->tanggal_penyelesaian?->format('Y-m-d'), 'catatan' => $ticket->catatan]) }})" style="background: #16A34A; color: #fff; border-color: #16A34A;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"/></svg>
             Tutup Tiket

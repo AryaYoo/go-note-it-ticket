@@ -55,20 +55,20 @@ class Device extends Model
     }
 
     /**
-     * Relasi tiket yang masih berstatus belum Closed (Open atau Eskalasi)
+     * Relasi tiket yang masih berstatus belum selesai (bukan Closed atau Selesai)
      */
     public function openTickets()
     {
-        return $this->tickets()->where('status', '!=', 'Closed');
+        return $this->tickets()->whereNotIn('status', ['Closed', 'Selesai']);
     }
 
     /**
-     * Ambil tiket aktif pertama yang belum Closed (memanfaatkan eager loaded tickets jika tersedia)
+     * Ambil tiket aktif pertama yang belum selesai (memanfaatkan eager loaded tickets jika tersedia)
      */
     public function activeOpenTicket(): ?Ticket
     {
         if ($this->relationLoaded('tickets')) {
-            return $this->tickets->first(fn($t) => $t->status !== 'Closed');
+            return $this->tickets->first(fn($t) => !in_array($t->status, ['Closed', 'Selesai']));
         }
 
         return $this->openTickets()->latest('tickets.id')->first();
