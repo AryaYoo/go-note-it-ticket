@@ -23,6 +23,7 @@ class TicketsExport implements FromQuery, WithMapping, WithCustomStartCell, With
             ->filterStatus($this->filters['status'] ?? null)
             ->filterKategori($this->filters['kategori'] ?? null)
             ->filterPrioritas($this->filters['prioritas'] ?? null)
+            ->filterPic($this->filters['pic'] ?? null)
             ->filterTanggal($this->filters['date_from'] ?? null, $this->filters['date_to'] ?? null)
             ->filterSearch($this->filters['search'] ?? null)
             ->filterExclude($this->filters['exclude'] ?? null)

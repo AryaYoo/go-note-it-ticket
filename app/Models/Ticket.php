@@ -98,6 +98,11 @@ class Ticket extends Model
         return $prioritas ? $query->where('prioritas', $prioritas) : $query;
     }
 
+    public function scopeFilterPic(Builder $query, ?string $pic): Builder
+    {
+        return $pic ? $query->where('pic', 'like', "%{$pic}%") : $query;
+    }
+
     public function scopeFilterTanggal(Builder $query, ?string $from, ?string $to): Builder
     {
         if ($from) {
@@ -117,6 +122,7 @@ class Ticket extends Model
                   ->orWhere('nama_pelapor', 'like', "%{$search}%")
                   ->orWhere('divisi_toko', 'like', "%{$search}%")
                   ->orWhere('deskripsi_kendala', 'like', "%{$search}%")
+                  ->orWhere('pic', 'like', "%{$search}%")
                   ->orWhere('catatan', 'like', "%{$search}%");
             })
             : $query;

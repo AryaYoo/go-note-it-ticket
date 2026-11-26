@@ -32,8 +32,9 @@
 </div>
 
 @php
-    $filterKeys = ['status', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude'];
+    $filterKeys = ['status', 'pic', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude'];
     $activeFilterCount = collect($filterKeys)->filter(fn($k) => request()->filled($k))->count();
+    $picList = $picList ?? \App\Models\Ticket::whereNotNull('pic')->where('pic', '!=', '')->distinct()->pluck('pic')->sort()->values();
 @endphp
 
 {{-- Action & Filter Bar --}}
@@ -47,7 +48,7 @@
         {{-- Search Input with icon --}}
         <div class="search-input-wrap">
             <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" name="search" class="search-input" placeholder="Cari tiket, pelapor, divisi..." value="{{ request('search') }}">
+            <input type="text" name="search" class="search-input" placeholder="Cari tiket, pelapor, divisi, PIC..." value="{{ request('search') }}">
             @if(request('search'))
                 <a href="{{ route('tickets.index', request()->except('search')) }}" class="search-clear-btn" title="Hapus pencarian">✕</a>
             @endif
@@ -62,7 +63,7 @@
             @endif
         </button>
 
-        @if(request()->hasAny(['search', 'status', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude']))
+        @if(request()->hasAny(['search', 'status', 'pic', 'kategori', 'prioritas', 'date_from', 'date_to', 'exclude']))
             <a href="{{ route('tickets.index') }}" class="btn btn-ghost btn-sm" title="Reset semua pencarian & filter">Reset</a>
         @endif
 
@@ -83,14 +84,25 @@
                 </div>
 
                 <div class="filter-modal-body">
-                    <div class="form-group">
-                        <label class="form-label">Status Tiket</label>
-                        <select name="status" class="form-select">
-                            <option value="">Semua Status</option>
-                            @foreach(['Open','Closed','Selesai','Eskalasi'] as $s)
-                            <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ $s }}</option>
-                            @endforeach
-                        </select>
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Status Tiket</label>
+                            <select name="status" class="form-select">
+                                <option value="">Semua Status</option>
+                                @foreach(['Open','Closed','Selesai','Eskalasi'] as $s)
+                                <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ $s }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Penanggung Jawab (PIC)</label>
+                            <select name="pic" class="form-select">
+                                <option value="">Semua PIC</option>
+                                @foreach($picList as $p)
+                                <option value="{{ $p }}" {{ request('pic') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-row form-row-2">
@@ -159,6 +171,12 @@
         <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
             Status: {{ request('status') }}
             <a href="{{ route('tickets.index', request()->except('status')) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter status">✕</a>
+        </span>
+    @endif
+    @if(request('pic'))
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; background: #EFF6FF; color: var(--primary); font-weight: 500;">
+            PIC: {{ request('pic') }}
+            <a href="{{ route('tickets.index', request()->except('pic')) }}" style="text-decoration: none; color: inherit; font-size: 11px; margin-left: 2px;" title="Hapus filter PIC">✕</a>
         </span>
     @endif
     @if(request('kategori'))

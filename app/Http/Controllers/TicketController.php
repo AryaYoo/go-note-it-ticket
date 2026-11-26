@@ -25,6 +25,7 @@ class TicketController extends Controller
             ->filterStatus($request->status)
             ->filterKategori($request->kategori)
             ->filterPrioritas($request->prioritas)
+            ->filterPic($request->pic)
             ->filterTanggal($request->date_from, $request->date_to)
             ->filterSearch($request->search)
             ->filterExclude($request->exclude)
@@ -33,7 +34,9 @@ class TicketController extends Controller
 
         $tickets = $query->paginate(15)->withQueryString();
 
-        return view('tickets.index', compact('tickets'));
+        $picList = Ticket::whereNotNull('pic')->where('pic', '!=', '')->distinct()->pluck('pic')->sort()->values();
+
+        return view('tickets.index', compact('tickets', 'picList'));
     }
 
     public function create(Request $request)
